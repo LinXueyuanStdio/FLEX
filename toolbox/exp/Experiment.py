@@ -41,8 +41,9 @@ class Experiment:
         num_params = 0
         for name, param in model.named_parameters():
             if param.requires_grad:
-                self.debug(name)
-                num_params += np.prod(param.size())
+                ps = np.prod(param.size())
+                num_params += ps
+                self.debug(f"{name}: {sizeof_fmt(ps)}")
         self.log('Total Parameters: %s' % sizeof_fmt(num_params))
         self.debug("")
 
