@@ -84,6 +84,9 @@ class ComplexQueryDatasetCachePath(DatasetCachePath):
         self.test_easy_answers_path = self.cache_path / "test-easy-answers.pkl"
         self.stats_path = self.cache_path / "stats.txt"
 
+    def __repr__(self):
+        return f"{self.__class__.__name__}({self.cache_path})"
+
 
 class ComplexQueryData:
     def __init__(self, cache_path: ComplexQueryDatasetCachePath):
@@ -169,6 +172,9 @@ class ComplexQueryData:
                     del self.valid_queries[query_structure]
                 if query_structure in self.test_queries:
                     del self.test_queries[query_structure]
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}({self.cache_path})"
 
 
 class FB15k_237_BetaE(BaseDatasetSchema):

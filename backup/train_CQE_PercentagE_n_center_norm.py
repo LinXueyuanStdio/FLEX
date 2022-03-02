@@ -103,7 +103,7 @@ class MyExperiment(Experiment):
         valid_dataloader = DataLoader(
             TestDataset(valid_queries, nentity, nrelation),
             batch_size=test_batch_size,
-            num_workers=cpu_num,
+            num_workers=cpu_num // 2,
             collate_fn=TestDataset.collate_fn
         )
 
@@ -114,7 +114,7 @@ class MyExperiment(Experiment):
         test_dataloader = DataLoader(
             TestDataset(test_queries, nentity, nrelation),
             batch_size=test_batch_size,
-            num_workers=cpu_num,
+            num_workers=cpu_num // 2,
             collate_fn=TestDataset.collate_fn
         )
 
