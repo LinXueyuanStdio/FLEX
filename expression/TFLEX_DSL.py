@@ -135,11 +135,11 @@ class SamplingParser(BasicParser):
         }
         super().__init__(variables=variables, neural_ops=neural_ops)
         self.ast_cache = {}
-        self.query_structures = [
-            "def Pe_aPt(e1, r1, e2, r2, e3): return Pe(e1, r1, after(Pt(e2, r2, e3)))",
-            "def Pe_bPt(e1, r1, e2, r2, e3): return Pe(e1, r1, before(Pt(e2, r2, e3)))",
-        ]
-        for qs in self.query_structures:
+        self.query_structures = {
+            "Pe_aPt": "def Pe_aPt(e1, r1, e2, r2, e3): return Pe(e1, r1, after(Pt(e2, r2, e3)))",
+            "Pe_bPt": "def Pe_bPt(e1, r1, e2, r2, e3): return Pe(e1, r1, before(Pt(e2, r2, e3)))",
+        }
+        for name, qs in self.query_structures.items():
             self.__pre_define(qs)
 
     def __pre_define(self, structure: str):

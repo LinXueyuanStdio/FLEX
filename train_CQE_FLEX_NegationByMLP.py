@@ -1,4 +1,9 @@
-#!/usr/bin/python3
+"""
+@author: lxy
+@email: linxy59@mail2.sysu.edu.cn
+@date: 2021/10/26
+@description: null
+"""
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
