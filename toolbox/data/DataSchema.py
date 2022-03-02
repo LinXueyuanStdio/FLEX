@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 from collections import defaultdict
 from pathlib import Path
-from typing import Tuple, List, Set, Dict
+from typing import Tuple, List, Set, Dict, Any
 
 from toolbox.data.DatasetSchema import (
     RelationalTripletDatasetSchema,
@@ -106,7 +106,7 @@ class BaseData:
     def clear_cache(self):
         pass
 
-    def meta(self):
+    def meta(self) -> Dict[str, Any]:
         return {}
 
     def dump(self) -> List[str]:
@@ -427,7 +427,7 @@ class RelationalTripletData(BaseData):
         self.train_triples_count = meta["train_triples_count"]
         self.triple_count = meta["triple_count"]
 
-    def meta(self):
+    def meta(self) -> Dict[str, Any]:
         return {
             "relation_count": self.relation_count,
             "entity_count": self.entity_count,
@@ -983,7 +983,7 @@ class DBP15kData(RelationalTripletData):
         self.kg1_attribute_values_count = meta["kg1_attribute_values_count"]
         self.kg2_attribute_values_count = meta["kg2_attribute_values_count"]
 
-    def meta(self):
+    def meta(self) -> Dict[str, Any]:
         return {
             "dataset": self.dataset.name,
             "entity_count": self.entity_count,

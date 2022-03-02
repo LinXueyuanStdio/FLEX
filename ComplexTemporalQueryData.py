@@ -6,7 +6,7 @@
 """
 from collections import defaultdict
 from pathlib import Path
-from typing import List, Tuple, Dict, Set, Union
+from typing import List, Tuple, Dict, Set, Union, Any
 
 from toolbox.data.DataSchema import DatasetCachePath, BaseData
 from toolbox.data.DatasetSchema import RelationalTripletDatasetSchema
@@ -363,7 +363,7 @@ class TemporalKnowledgeData(BaseData):
         self.train_triples_count = meta["train_triples_count"]
         self.triple_count = meta["triple_count"]
 
-    def meta(self):
+    def meta(self) -> Dict[str, Any]:
         return {
             "entity_count": self.entity_count,
             "relation_count": self.relation_count,
@@ -397,34 +397,92 @@ above is simple temporal kg
 below is complex query data (logical reasoning) based on previous temporal kg
 """
 
+
 class ComplexTemporalQueryDatasetCachePath(TemporalKnowledgeDatasetCachePath):
     def __init__(self, cache_path: Path):
         TemporalKnowledgeDatasetCachePath.__init__(self, cache_path)
-        self.train_queries_answers_path = self.cache_path / "train-queries-answers.pkl"
-        self.train_queries_path = self.cache_path / "train-queries.pkl"
-        self.train_answers_path = self.cache_path / "train-answers.pkl"
-        self.valid_queries_path = self.cache_path / "valid-queries.pkl"
-        self.valid_hard_answers_path = self.cache_path / "valid-hard-answers.pkl"
-        self.valid_easy_answers_path = self.cache_path / "valid-easy-answers.pkl"
-        self.test_queries_path = self.cache_path / "test-queries.pkl"
-        self.test_hard_answers_path = self.cache_path / "test-hard-answers.pkl"
-        self.test_easy_answers_path = self.cache_path / "test-easy-answers.pkl"
-
-
-QueryStructure = str
+        self.cache_train_queries_answers_path = self.cache_path / "train_queries_answers.pkl"
+        self.cache_valid_queries_answers_path = self.cache_path / "valid_queries_answers.pkl"
+        self.cache_test_queries_answers_path = self.cache_path / "test_queries_answers.pkl"
 
 
 class ComplexQueryData(TemporalKnowledgeData):
+
     def __init__(self,
                  dataset: RelationalTripletDatasetSchema,
                  cache_path: ComplexTemporalQueryDatasetCachePath):
         TemporalKnowledgeData.__init__(self, dataset, cache_path)
-        self.train_queries_answers: Dict[QueryStructure, List[Tuple[QueryFlattenIds, Set[int]]]] = {}
-        self.train_queries: Dict[QueryStructure, Set[QueryFlattenIds]] = {}
-        self.train_answers: Dict[QueryFlattenIds, Set[int]] = {}
-        self.valid_queries: Dict[QueryStructure, Set[QueryFlattenIds]] = {}
-        self.valid_hard_answers: Dict[QueryFlattenIds, Set[int]] = {}
-        self.valid_easy_answers: Dict[QueryFlattenIds, Set[int]] = {}
-        self.test_queries: Dict[QueryStructure, Set[QueryFlattenIds]] = {}
-        self.test_hard_answers: Dict[QueryFlattenIds, Set[int]] = {}
-        self.test_easy_answers: Dict[QueryFlattenIds, Set[int]] = {}
+        # Dict[str, Dict[str, Union[List[str], List[Tuple[List[int], Set[int]]]]]]
+        #       |                       |                     |          |
+        #     structure name      args name list              |          |
+        #                                    ids corresponding to args   |
+        #                                                          answers id set
+        # 1. `structure name` is the name of a function (named query function), parsed to AST and eval to get results.
+        # 2. `args name list` is the arg list of query function.
+        self.train_queries_answers: Dict[str, Dict[str, Union[List[str], List[Tuple[List[int], Set[int]]]]]] = {
+            "Pe_aPt": {
+                "args": ["e1", "r1", "e2", "r2", "e3"],
+                "queries_answers": [
+                    ([1, 2, 3, 4, 5], {2, 3, 5}),
+                    ([1, 2, 3, 4, 5], {2, 3, 5}),
+                    ([1, 2, 3, 4, 5], {2, 3, 5}),
+                ]
+            }
+        }
+        self.valid_queries_answers: Dict[str, Dict[str, Union[List[str], List[Tuple[List[int], Set[int], Set[int]]]]]] = {
+            "Pe_aPt": {
+                "args": ["e1", "r1", "e2", "r2", "e3"],
+                "queries_answers": [
+                    ([1, 2, 3, 4, 5], {2, 3, 5}, {2, 3, 5}),
+                    # (ids corresponding to args, easy answers set, hard answers set)
+                    ([1, 2, 3, 4, 5], {2, 3, 5}, {2, 3, 5}),
+                    ([1, 2, 3, 4, 5], {2, 3, 5}, {2, 3, 5}),
+                ]
+            }
+        }
+        self.test_queries_answers: Dict[str, Dict[str, Union[List[str], List[Tuple[List[int], Set[int], Set[int]]]]]] = {
+            "Pe_aPt": {
+                "args": ["e1", "r1", "e2", "r2", "e3"],
+                "queries_answers": [
+                    ([1, 2, 3, 4, 5], {2, 3, 5}, {2, 3, 5}),
+                    # (ids corresponding to args, easy answers set, hard answers set)
+                    ([1, 2, 3, 4, 5], {2, 3, 5}, {2, 3, 5}),
+                    ([1, 2, 3, 4, 5], {2, 3, 5}, {2, 3, 5}),
+                ]
+            }
+        }
+        # meta
+        self.query_meta = {
+            "Pe_aPt": {
+                "queries_count": 1,
+                "avg_answers_count": 1
+            }
+        }
+
+    def transform_all_data(self):
+        TemporalKnowledgeData.transform_all_data(self)
+        # TODO 1. sampling
+        # TODO 2. filling meta
+
+    def cache_all_data(self):
+        TemporalKnowledgeData.cache_all_data(self)
+        # TODO cache
+
+    def read_meta(self, meta):
+        TemporalKnowledgeData.read_meta(self, meta)
+        self.query_meta = meta["query_meta"]
+
+    def meta(self) -> Dict[str, Any]:
+        m = TemporalKnowledgeData.meta(self)
+        m.update({
+            "query_meta": self.query_meta,
+        })
+        return m
+
+    def dump(self) -> List[str]:
+        """ Function to dump statistic information of a dataset """
+        # dump key information
+        dump = TemporalKnowledgeData.dump(self)
+        for k, v in self.query_meta.items():
+            dump.insert(len(dump) - 3, f"{k} : {v}")
+        return dump
