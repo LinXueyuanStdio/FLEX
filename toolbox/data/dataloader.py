@@ -3,7 +3,6 @@ from typing import List, Tuple
 
 import numpy as np
 import torch
-
 from torch.utils.data import Dataset
 
 
@@ -287,11 +286,19 @@ class TestDataset(Dataset):
         return positive_sample, negative_sample, filter_bias, mode
 
 
+def one_shot_iterator(dataloader):
+    """
+    Transform a PyTorch Dataloader into python iterator
+    """
+    while True:
+        for data in dataloader:
+            yield data
+
+
 class BidirectionalOneShotIterator(object):
     def __init__(self, dataloader_head, dataloader_tail):
-        self.iterator_head = self.one_shot_iterator(dataloader_head)
-
-        self.iterator_tail = self.one_shot_iterator(dataloader_tail)
+        self.iterator_head = one_shot_iterator(dataloader_head)
+        self.iterator_tail = one_shot_iterator(dataloader_tail)
         self.step = 0
 
     def __next__(self):
@@ -310,11 +317,13 @@ class BidirectionalOneShotIterator(object):
             data = next(self.iterator_tail)
         return data
 
-    @staticmethod
-    def one_shot_iterator(dataloader):
-        """
-        Transform a PyTorch Dataloader into python iterator
-        """
-        while True:
-            for data in dataloader:
-                yield data
+
+class SingledirectionalOneShotIterator(object):
+    def __init__(self, dataloader):
+        self.iterator = one_shot_iterator(dataloader)
+        self.step = 0
+
+    def __next__(self):
+        self.step += 1
+        data = next(self.iterator)
+        return data

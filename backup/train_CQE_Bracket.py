@@ -15,7 +15,8 @@ from torch.utils.data import DataLoader
 
 from BracketCQE import Bracket
 from ComplexQueryData import *
-from dataloader import TestDataset, TrainDataset, SingledirectionalOneShotIterator
+from dataloader import TestDataset, TrainDataset
+from toolbox.data.dataloader import SingledirectionalOneShotIterator
 from toolbox.exp.Experiment import Experiment
 from toolbox.exp.OutputSchema import OutputSchema
 from toolbox.utils.Progbar import Progbar
