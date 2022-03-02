@@ -413,7 +413,12 @@ def main(dataset, name,
     set_seeds(0)
     output = OutputSchema(dataset + "-" + name)
 
-    dataset = FB15k_237_BetaE()
+    if dataset == "FB15k-237":
+        dataset = FB15k_237_BetaE()
+    elif dataset == "FB15k":
+        dataset = FB15k_BetaE()
+    elif dataset == "NELL":
+        dataset = NELL_BetaE()
     cache = ComplexQueryDatasetCachePath(dataset.root_path)
     data = ComplexQueryData(cache_path=cache)
     data.load(evaluate_union, tasks)
