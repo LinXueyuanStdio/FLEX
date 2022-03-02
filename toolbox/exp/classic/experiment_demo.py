@@ -14,9 +14,7 @@ class MyExperiment(Experiment):
 
     def __init__(self, output: OutputSchema):
         super(MyExperiment, self).__init__(output)
-        saved_args = locals()
-        for i in saved_args:
-            self.log(i)
+        self.log(f"{locals()}")
 
         self.model_param_store.save_scripts([__file__])
         seed = 10

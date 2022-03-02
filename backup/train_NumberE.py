@@ -80,9 +80,7 @@ class MyExperiment(Experiment):
                  edim, rdim, input_dropout, hidden_dropout1, hidden_dropout2,
                  ):
         super(MyExperiment, self).__init__(output)
-        saved_args = locals()
-        for i in saved_args:
-            self.log(i)
+        self.log(f"{locals()}")
 
         # 1. build train dataset
         train_data = AddDataset(-100, 100)
