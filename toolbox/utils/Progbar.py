@@ -4,8 +4,10 @@
 @date: 2022/2/19
 @description: 进度条
 """
-import time
 import sys
+import time
+from typing import Dict, Any, Union, Tuple, List
+
 import numpy as np
 
 
@@ -19,21 +21,21 @@ class Progbar(object):
            >>>     progbar.update(i, [("step", i), ("next", i+1)])
     """
 
-    def __init__(self, max_step, width=15, mode="instant"):
-        self.max_step = max_step
-        self.width = width
-        self.mode = mode
-        self.last_width = 0
+    def __init__(self, max_step: int, width: int = 15, mode: str = "instant"):
+        self.max_step: int = max_step
+        self.width: int = width
+        self.mode: str = mode
+        self.last_width: int = 0
 
-        self.sum_values = {}
+        self.sum_values: Dict[str, Any] = {}
 
-        self.start = time.time()
-        self.last_step = 0
+        self.start: float = time.time()
+        self.last_step: int = 0
 
-        self.info = ""
-        self.bar = ""
+        self.info: str = ""
+        self.bar: str = ""
 
-    def _update_values(self, curr_step, values):
+    def _update_values(self, curr_step: int, values: List[Tuple[str, Union[float, str, int]]]):
         for k, v in values:
             if k not in self.sum_values:
                 if isinstance(v, float) or isinstance(v, int):
@@ -57,7 +59,7 @@ class Progbar(object):
                 else:
                     self.sum_values[k] = (str(v) + "              ")[:20]
 
-    def _write_bar(self, curr_step):
+    def _write_bar(self, curr_step: int):
         last_width = self.last_width
         sys.stdout.write("\b" * last_width)
         sys.stdout.write("\r")
@@ -79,7 +81,7 @@ class Progbar(object):
 
         return bar
 
-    def _get_eta(self, curr_step):
+    def _get_eta(self, curr_step: int):
         now = time.time()
         if curr_step:
             time_per_unit = (now - self.start) / curr_step
@@ -109,7 +111,7 @@ class Progbar(object):
                     info += ' - %s: %.6f' % (name, value[0] / max(1, value[1]))
         return info
 
-    def _write_info(self, curr_step):
+    def _write_info(self, curr_step: int):
         info = ""
         info += self._get_eta(curr_step)
         info += self._get_values_sum()
@@ -118,7 +120,7 @@ class Progbar(object):
 
         return info
 
-    def _update_width(self, curr_step):
+    def _update_width(self, curr_step: int):
         curr_width = len(self.bar) + len(self.info)
         if curr_width < self.last_width:
             sys.stdout.write(" " * (self.last_width - curr_width))
@@ -130,14 +132,15 @@ class Progbar(object):
 
         self.last_width = curr_width
 
-    def update(self, curr_step, values):
+    def update(self, curr_step: int, values: Union[Dict[str, Any], List[Tuple[str, Any]]]):
         """Updates the progress bar.
+        The progress bar will display averages for these values.
 
         Args:
-            values: List of tuples (name, value_for_last_step).
-                The progress bar will display averages for these values.
-
+            values: Dict or List of tuples (name, value_for_last_step).
         """
+        if isinstance(values, dict):
+            values = [(k, v) for k, v in values.items()]
         self._update_values(curr_step, values)
         self.bar = self._write_bar(curr_step)
         self.info = self._write_info(curr_step)
