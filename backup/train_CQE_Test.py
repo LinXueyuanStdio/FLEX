@@ -41,6 +41,9 @@ class MyExperiment(Experiment):
                  tasks, evaluate_union, center_reg,
                  ):
         super(MyExperiment, self).__init__(output)
+        saved_args = locals()
+        for i in saved_args:
+             self.log(i)
 
         self.model_param_store.save_scripts(["train_CQE_Test.py", "BoolE2.py"])
         nentity = data.nentity
