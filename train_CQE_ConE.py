@@ -30,13 +30,11 @@ class MyExperiment(Experiment):
 
     def __init__(self, output: OutputSchema, data: ComplexQueryData,
                  start_step, max_steps, every_test_step, every_valid_step,
-                 batch_size, test_batch_size, sampling_window_size, label_smoothing,
+                 batch_size, test_batch_size, negative_sample_size,
                  train_device, test_device,
                  resume, resume_by_score,
-                 lr, amsgrad, lr_decay, weight_decay,
-                 edim, rdim, input_dropout, hidden_dropout1, hidden_dropout2,
-                 negative_sample_size, hidden_dim, gamma, learning_rate, cpu_num,
-                 tasks, evaluate_union, center_reg,
+                 lr, tasks, evaluate_union, cpu_num,
+                 hidden_dim, input_dropout, gamma, center_reg,
                  ):
         super(MyExperiment, self).__init__(output)
         saved_args = locals()
@@ -379,47 +377,34 @@ class MyExperiment(Experiment):
 
 
 @click.command()
-@click.option("--dataset", type=str, default="FB15k-237", help="Which dataset to use: FB15k, FB15k-237, WN18 or WN18RR.")
+@click.option("--dataset", type=str, default="FB15k-237", help="Which dataset to use: FB15k, FB15k-237, NELL.")
 @click.option("--name", type=str, default="ConE", help="Name of the experiment.")
 @click.option("--start_step", type=int, default=0, help="start step.")
 @click.option("--max_steps", type=int, default=300001, help="Number of steps.")
 @click.option("--every_test_step", type=int, default=10000, help="Number of steps.")
 @click.option("--every_valid_step", type=int, default=10000, help="Number of steps.")
 @click.option("--batch_size", type=int, default=512, help="Batch size.")
-@click.option("--test_batch_size", type=int, default=4, help="Test batch size.")
-@click.option("--sampling_window_size", type=int, default=1000, help="Sampling window size.")
-@click.option("--label_smoothing", type=float, default=0.1, help="Amount of label smoothing.")
+@click.option("--test_batch_size", type=int, default=8, help="Test batch size.")
+@click.option('--negative_sample_size', default=128, type=int, help="negative entities sampled per query")
 @click.option("--train_device", type=str, default="cuda:0", help="choice: cuda:0, cuda:1, cpu.")
 @click.option("--test_device", type=str, default="cuda:0", help="choice: cuda:0, cuda:1, cpu.")
 @click.option("--resume", type=bool, default=False, help="Resume from output directory.")
 @click.option("--resume_by_score", type=float, default=0.0, help="Resume by score from output directory. Resume best if it is 0. Default: 0")
 @click.option("--lr", type=float, default=0.0001, help="Learning rate.")
-@click.option("--amsgrad", type=bool, default=False, help="AMSGrad for Adam.")
-@click.option("--lr_decay", type=float, default=0.995, help='Decay the learning rate by this factor every epoch. Default: 0.995')
-@click.option('--weight_decay', type=float, default=0.0, help='Weight decay value to use in the optimizer. Default: 0.0')
-@click.option("--edim", type=int, default=200, help="Entity embedding dimensionality.")
-@click.option("--rdim", type=int, default=200, help="Relation embedding dimensionality.")
+@click.option('--tasks', type=str, default='1p.2p.3p.2i.3i.ip.pi.2in.3in.inp.pin.pni.2u.up', help="tasks connected by dot, refer to the BetaE paper for detailed meaning and structure of each task")
+@click.option('--evaluate_union', type=str, default="DNF", help='choices=[DNF, DM] the way to evaluate union queries, transform it to disjunctive normal form (DNF) or use the De Morgan\'s laws (DM)')
+@click.option('--cpu_num', type=int, default=4, help="used to speed up torch.dataloader")
+@click.option('--hidden_dim', type=int, default=800, help="embedding dimension")
 @click.option("--input_dropout", type=float, default=0.1, help="Input layer dropout.")
-@click.option("--hidden_dropout1", type=float, default=0.2, help="Dropout after the first hidden layer.")
-@click.option("--hidden_dropout2", type=float, default=0.2, help="Dropout after the second hidden layer.")
-@click.option('--negative_sample_size', default=128, type=int, help="negative entities sampled per query")
-@click.option('--hidden_dim', default=800, type=int, help="embedding dimension")
-@click.option('--gamma', default=30.0, type=float, help="margin in the loss")
-@click.option('--learning_rate', default=0.0001, type=float)
-@click.option('--cpu_num', default=4, type=int, help="used to speed up torch.dataloader")
-@click.option('--tasks', default='1p.2p.3p.2i.3i.ip.pi.2in.3in.inp.pin.pni.2u.up', type=str, help="tasks connected by dot, refer to the BetaE paper for detailed meaning and structure of each task")
-@click.option('--center_reg', default=0.02, type=float, help='center_reg for ConE, center_reg balances the in_cone dist and out_cone dist')
-@click.option('--evaluate_union', default="DNF", type=str,
-              help='choices=[DNF, DM] the way to evaluate union queries, transform it to disjunctive normal form (DNF) or use the De Morgan\'s laws (DM)')
+@click.option('--gamma', type=float, default=30.0, help="margin in the loss")
+@click.option('--center_reg', type=float, default=0.02, help='center_reg for ConE, center_reg balances the in_cone dist and out_cone dist')
 def main(dataset, name,
          start_step, max_steps, every_test_step, every_valid_step,
-         batch_size, test_batch_size, sampling_window_size, label_smoothing,
+         batch_size, test_batch_size, negative_sample_size,
          train_device, test_device,
          resume, resume_by_score,
-         lr, amsgrad, lr_decay, weight_decay,
-         edim, rdim, input_dropout, hidden_dropout1, hidden_dropout2,
-         negative_sample_size, hidden_dim, gamma, learning_rate, cpu_num,
-         tasks, evaluate_union, center_reg,
+         lr, tasks, evaluate_union, cpu_num,
+         hidden_dim, input_dropout, gamma, center_reg,
          ):
     set_seeds(0)
     output = OutputSchema(dataset + "-" + name)
@@ -437,13 +422,11 @@ def main(dataset, name,
     MyExperiment(
         output, data,
         start_step, max_steps, every_test_step, every_valid_step,
-        batch_size, test_batch_size, sampling_window_size, label_smoothing,
+        batch_size, test_batch_size, negative_sample_size,
         train_device, test_device,
         resume, resume_by_score,
-        lr, amsgrad, lr_decay, weight_decay,
-        edim, rdim, input_dropout, hidden_dropout1, hidden_dropout2,
-        negative_sample_size, hidden_dim, gamma, learning_rate, cpu_num,
-        tasks, evaluate_union, center_reg,
+        lr, tasks, evaluate_union, cpu_num,
+        hidden_dim, input_dropout, gamma, center_reg,
     )
 
 
