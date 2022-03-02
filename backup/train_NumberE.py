@@ -82,7 +82,7 @@ class MyExperiment(Experiment):
         super(MyExperiment, self).__init__(output)
         saved_args = locals()
         for i in saved_args:
-             self.log(i)
+            self.log(i)
 
         # 1. build train dataset
         train_data = AddDataset(-100, 100)

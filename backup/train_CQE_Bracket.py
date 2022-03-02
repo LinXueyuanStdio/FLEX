@@ -45,7 +45,7 @@ class MyExperiment(Experiment):
         super(MyExperiment, self).__init__(output)
         saved_args = locals()
         for i in saved_args:
-             self.log(i)
+            self.log(i)
 
         self.model_param_store.save_scripts(["train_CQE_Bracket.py", "BracketCQE.py"])
         nentity = data.nentity

@@ -28,7 +28,7 @@ class MyExperiment(Experiment):
         super(MyExperiment, self).__init__(output)
         saved_args = locals()
         for i in saved_args:
-             self.log(i)
+            self.log(i)
         data.load_cache(["train_triples_ids", "test_triples_ids", "valid_triples_ids", "all_triples_ids"])
         data.print(self.log)
 
