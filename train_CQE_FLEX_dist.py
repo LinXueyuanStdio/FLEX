@@ -396,9 +396,11 @@ class MyExperiment(Experiment):
         self.log('Evaluate unoins using: %s' % evaluate_union)
 
         self.log("loading data")
-
+        nprocs = torch.cuda.device_count()
         dist.init_process_group(backend='nccl')
         torch.cuda.set_device(local_rank)
+        batch_size = batch_size // nprocs
+        test_batch_size = test_batch_size // nprocs
         # 1. build train dataset
         train_queries = data.train_queries
         train_answers = data.train_answers
