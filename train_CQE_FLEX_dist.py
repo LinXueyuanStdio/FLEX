@@ -381,7 +381,7 @@ class MyExperiment(Experiment):
                  train_device, test_device,
                  resume, resume_by_score,
                  lr, tasks, evaluate_union, cpu_num,
-                 hidden_dim, input_dropout, gamma, center_reg,local_rank
+                 hidden_dim, input_dropout, gamma, center_reg, local_rank
                  ):
         super(MyExperiment, self).__init__(output)
         self.log(f"{locals()}")
@@ -479,7 +479,7 @@ class MyExperiment(Experiment):
             test_batch_size=test_batch_size,
             query_name_dict=query_name_dict,
             drop=input_dropout,
-        ).to(train_device)
+        ).cuda(local_rank)
         model = DistributedDataParallel(model, device_ids=[local_rank])
         opt = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=lr)
         best_score = 0
@@ -495,10 +495,10 @@ class MyExperiment(Experiment):
                 self.debug("Resumed from score %.4f." % best_score)
                 self.debug("Take a look at the performance after resumed.")
                 self.debug("Validation (step: %d):" % start_step)
-                result = self.evaluate(model, valid_easy_answers, valid_hard_answers, valid_dataloader, test_batch_size, test_device)
+                result = self.evaluate(model, valid_easy_answers, valid_hard_answers, valid_dataloader, test_batch_size, local_rank)
                 best_score = self.visual_result(start_step + 1, result, "Valid")
                 self.debug("Test (step: %d):" % start_step)
-                result = self.evaluate(model, test_easy_answers, test_hard_answers, test_dataloader, test_batch_size, test_device)
+                result = self.evaluate(model, test_easy_answers, test_hard_answers, test_dataloader, test_batch_size, local_rank)
                 best_test_score = self.visual_result(start_step + 1, result, "Test")
         else:
             model.init()
@@ -523,14 +523,14 @@ class MyExperiment(Experiment):
         progbar = Progbar(max_step=max_steps)
         for step in range(start_step, max_steps):
             model.train()
-            log = self.train(model, opt, train_path_iterator, step, train_device)
+            log = self.train(model, opt, train_path_iterator, step, local_rank)
             for metric in log:
                 self.vis.add_scalar('path_' + metric, log[metric], step)
             if train_other_iterator is not None:
-                log = self.train(model, opt, train_other_iterator, step, train_device)
+                log = self.train(model, opt, train_other_iterator, step, local_rank)
                 for metric in log:
                     self.vis.add_scalar('other_' + metric, log[metric], step)
-                log = self.train(model, opt, train_path_iterator, step, train_device)
+                log = self.train(model, opt, train_path_iterator, step, local_rank)
 
             progbar.update(step + 1, [("step", step + 1), ("loss", log["loss"]), ("positive", log["positive_sample_loss"]), ("negative", log["negative_sample_loss"])])
             if (step + 1) % 10 == 0:
@@ -551,7 +551,7 @@ class MyExperiment(Experiment):
                 with torch.no_grad():
                     print("")
                     self.debug("Validation (step: %d):" % (step + 1))
-                    result = self.evaluate(model, valid_easy_answers, valid_hard_answers, valid_dataloader, test_batch_size, test_device)
+                    result = self.evaluate(model, valid_easy_answers, valid_hard_answers, valid_dataloader, test_batch_size, local_rank)
                     score = self.visual_result(step + 1, result, "Valid")
                     if score >= best_score:
                         self.success("current score=%.4f > best score=%.4f" % (score, best_score))
@@ -567,7 +567,7 @@ class MyExperiment(Experiment):
                 with torch.no_grad():
                     print("")
                     self.debug("Test (step: %d):" % (step + 1))
-                    result = self.evaluate(model, test_easy_answers, test_hard_answers, test_dataloader, test_batch_size, test_device)
+                    result = self.evaluate(model, test_easy_answers, test_hard_answers, test_dataloader, test_batch_size, local_rank)
                     score = self.visual_result(step + 1, result, "Test")
                     if score >= best_test_score:
                         best_test_score = score
@@ -575,9 +575,9 @@ class MyExperiment(Experiment):
                     print("")
         self.metric_log_store.finish()
 
-    def train(self, model, optimizer, train_iterator, step, device="cuda:0"):
+    def train(self, model, optimizer, train_iterator, step, device):
         model.train()
-        model.to(device)
+        model.cuda(device)
         optimizer.zero_grad()
 
         positive_sample, negative_sample, subsampling_weight, batch_queries, query_structures = next(train_iterator)
@@ -587,10 +587,10 @@ class MyExperiment(Experiment):
             batch_queries_dict[query_structures[i]].append(query)
             batch_idxs_dict[query_structures[i]].append(i)
         for query_structure in batch_queries_dict:
-            batch_queries_dict[query_structure] = torch.LongTensor(batch_queries_dict[query_structure]).to(device)
-        positive_sample = positive_sample.to(device)
-        negative_sample = negative_sample.to(device)
-        subsampling_weight = subsampling_weight.to(device)
+            batch_queries_dict[query_structure] = torch.LongTensor(batch_queries_dict[query_structure]).cuda(device, non_blocking=True)
+        positive_sample = positive_sample.cuda(device, non_blocking=True)
+        negative_sample = negative_sample.cuda(device, non_blocking=True)
+        subsampling_weight = subsampling_weight.cuda(device, non_blocking=True)
 
         positive_logit, negative_logit, subsampling_weight, _ = model(positive_sample, negative_sample, subsampling_weight, batch_queries_dict, batch_idxs_dict)
 
@@ -611,8 +611,8 @@ class MyExperiment(Experiment):
         }
         return log
 
-    def evaluate(self, model, easy_answers, hard_answers, test_dataloader, test_batch_size, device="cuda:0"):
-        model.to(device)
+    def evaluate(self, model, easy_answers, hard_answers, test_dataloader, test_batch_size, device):
+        model.cuda(device)
         total_steps = len(test_dataloader)
         progbar = Progbar(max_step=total_steps)
         logs = collections.defaultdict(list)
@@ -627,8 +627,8 @@ class MyExperiment(Experiment):
                 batch_queries_dict[query_structures[i]].append(query)
                 batch_idxs_dict[query_structures[i]].append(i)
             for query_structure in batch_queries_dict:
-                batch_queries_dict[query_structure] = torch.LongTensor(batch_queries_dict[query_structure]).to(device)
-            negative_sample = negative_sample.to(device)
+                batch_queries_dict[query_structure] = torch.LongTensor(batch_queries_dict[query_structure]).cuda(device, non_blocking=True)
+            negative_sample = negative_sample.cuda(device, non_blocking=True)
 
             _, negative_logit, _, idxs = model(None, negative_sample, None, batch_queries_dict, batch_idxs_dict)
             queries_unflatten = [queries_unflatten[i] for i in idxs]
@@ -637,12 +637,12 @@ class MyExperiment(Experiment):
             ranking = argsort.float()
             if len(argsort) == test_batch_size:
                 # if it is the same shape with test_batch_size, we can reuse batch_entity_range without creating a new one
-                ranking = ranking.scatter_(1, argsort, model.batch_entity_range.to(device))  # achieve the ranking of all entities
+                ranking = ranking.scatter_(1, argsort, model.batch_entity_range.cuda(device))  # achieve the ranking of all entities
             else:
                 # otherwise, create a new torch Tensor for batch_entity_range
                 ranking = ranking.scatter_(1,
                                            argsort,
-                                           torch.arange(model.nentity).float().repeat(argsort.shape[0], 1).to(device)
+                                           torch.arange(model.nentity).float().repeat(argsort.shape[0], 1).cuda(device)
                                            )  # achieve the ranking of all entities
             for idx, (i, query, query_structure) in enumerate(zip(argsort[:, 0], queries_unflatten, query_structures)):
                 hard_answer = hard_answers[query]
@@ -653,7 +653,7 @@ class MyExperiment(Experiment):
                 cur_ranking = ranking[idx, list(easy_answer) + list(hard_answer)]
                 cur_ranking, indices = torch.sort(cur_ranking)
                 masks = indices >= num_easy
-                answer_list = torch.arange(num_hard + num_easy).float().to(device)
+                answer_list = torch.arange(num_hard + num_easy).float().cuda(device)
                 cur_ranking = cur_ranking - answer_list + 1  # filtered setting
                 cur_ranking = cur_ranking[masks]  # only take indices that belong to the hard answers
 
