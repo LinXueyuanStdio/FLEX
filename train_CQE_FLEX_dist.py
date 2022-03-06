@@ -480,7 +480,6 @@ class MyExperiment(Experiment):
             query_name_dict=query_name_dict,
             drop=input_dropout,
         ).cuda(local_rank)
-        model = DistributedDataParallel(model, device_ids=[local_rank])
         opt = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=lr)
         best_score = 0
         best_test_score = 0
@@ -503,6 +502,7 @@ class MyExperiment(Experiment):
         else:
             model.init()
             self.dump_model(model)
+        model = DistributedDataParallel(model, device_ids=[local_rank])
 
         current_learning_rate = lr
         hyper = {
