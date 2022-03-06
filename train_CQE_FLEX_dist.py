@@ -581,8 +581,8 @@ class MyExperiment(Experiment):
         optimizer.zero_grad()
 
         positive_sample, negative_sample, subsampling_weight, batch_queries, query_structures = next(train_iterator)
-        batch_queries_dict: Dict[List[str], list] = collections.defaultdict(list)
-        batch_idxs_dict: Dict[List[str], List[int]] = collections.defaultdict(list)
+        batch_queries_dict: Dict[List[str], list] = collections.defaultdict((lambda:[]))
+        batch_idxs_dict: Dict[List[str], List[int]] = collections.defaultdict((lambda:[]))
         for i, query in enumerate(batch_queries):  # group queries with same structure
             batch_queries_dict[query_structures[i]].append(query)
             batch_idxs_dict[query_structures[i]].append(i)
