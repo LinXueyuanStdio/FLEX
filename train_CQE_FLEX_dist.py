@@ -428,7 +428,7 @@ class MyExperiment(Experiment):
             TrainDataset(train_path_queries, nentity, nrelation, negative_sample_size, train_answers),
             sampler=DistributedSampler(TrainDataset(train_path_queries, nentity, nrelation, negative_sample_size, train_answers)),
             batch_size=batch_size,
-            shuffle=True,
+            # shuffle=True,
             num_workers=cpu_num,
             collate_fn=TrainDataset.collate_fn
         ))
@@ -438,7 +438,7 @@ class MyExperiment(Experiment):
                 TrainDataset(train_other_queries, nentity, nrelation, negative_sample_size, train_answers),
                 sampler=DistributedSampler(TrainDataset(train_other_queries, nentity, nrelation, negative_sample_size, train_answers)),
                 batch_size=batch_size,
-                shuffle=True,
+                # shuffle=True,
                 num_workers=cpu_num,
                 collate_fn=TrainDataset.collate_fn
             ))
