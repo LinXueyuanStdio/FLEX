@@ -8,6 +8,8 @@ from collections import defaultdict
 from pathlib import Path
 from typing import List, Tuple, Dict, Set, Union, Any
 
+import expression
+from expression.ParamSchema import get_param_name_list, get_placeholder_list, placeholder2sample
 from toolbox.data.DataSchema import DatasetCachePath, BaseData
 from toolbox.data.DatasetSchema import RelationalTripletDatasetSchema
 from toolbox.data.functional import read_cache, cache_data
@@ -412,6 +414,7 @@ class ComplexQueryData(TemporalKnowledgeData):
                  dataset: RelationalTripletDatasetSchema,
                  cache_path: ComplexTemporalQueryDatasetCachePath):
         TemporalKnowledgeData.__init__(self, dataset, cache_path)
+        self.cache_path = cache_path
         # Dict[str, Dict[str, Union[List[str], List[Tuple[List[int], Set[int]]]]]]
         #       |                       |                     |          |
         #     structure name      args name list              |          |
@@ -419,6 +422,7 @@ class ComplexQueryData(TemporalKnowledgeData):
         #                                                          answers id set
         # 1. `structure name` is the name of a function (named query function), parsed to AST and eval to get results.
         # 2. `args name list` is the arg list of query function.
+        # 3. valid_queries_answers and test_queries_answers are the same type as train_queries_answers
         self.train_queries_answers: Dict[str, Dict[str, Union[List[str], List[Tuple[List[int], Set[int]]]]]] = {
             "Pe_aPt": {
                 "args": ["e1", "r1", "e2", "r2", "e3"],
@@ -429,28 +433,8 @@ class ComplexQueryData(TemporalKnowledgeData):
                 ]
             }
         }
-        self.valid_queries_answers: Dict[str, Dict[str, Union[List[str], List[Tuple[List[int], Set[int], Set[int]]]]]] = {
-            "Pe_aPt": {
-                "args": ["e1", "r1", "e2", "r2", "e3"],
-                "queries_answers": [
-                    ([1, 2, 3, 4, 5], {2, 3, 5}, {2, 3, 5}),
-                    # (ids corresponding to args, easy answers set, hard answers set)
-                    ([1, 2, 3, 4, 5], {2, 3, 5}, {2, 3, 5}),
-                    ([1, 2, 3, 4, 5], {2, 3, 5}, {2, 3, 5}),
-                ]
-            }
-        }
-        self.test_queries_answers: Dict[str, Dict[str, Union[List[str], List[Tuple[List[int], Set[int], Set[int]]]]]] = {
-            "Pe_aPt": {
-                "args": ["e1", "r1", "e2", "r2", "e3"],
-                "queries_answers": [
-                    ([1, 2, 3, 4, 5], {2, 3, 5}, {2, 3, 5}),
-                    # (ids corresponding to args, easy answers set, hard answers set)
-                    ([1, 2, 3, 4, 5], {2, 3, 5}, {2, 3, 5}),
-                    ([1, 2, 3, 4, 5], {2, 3, 5}, {2, 3, 5}),
-                ]
-            }
-        }
+        self.valid_queries_answers: Dict[str, Dict[str, Union[List[str], List[Tuple[List[int], Set[int]]]]]] = {}
+        self.test_queries_answers: Dict[str, Dict[str, Union[List[str], List[Tuple[List[int], Set[int]]]]]] = {}
         # meta
         self.query_meta = {
             "Pe_aPt": {
@@ -461,12 +445,83 @@ class ComplexQueryData(TemporalKnowledgeData):
 
     def transform_all_data(self):
         TemporalKnowledgeData.transform_all_data(self)
-        # TODO 1. sampling
-        # TODO 2. filling meta
+        # 1. add inverse relations
+        max_relation_id = self.relation_count
+
+        def append_reverse(triples, max_relation_id: int):
+            res = []
+            for s, r, o, t in triples:
+                res.append((s, r, o, t))
+                res.append((o, r + max_relation_id, s, t))
+            return res
+
+        all_triples_ids = append_reverse(self.all_triples_ids, max_relation_id)
+
+        # 2 parser
+        sro_t, srt_o = build_map_sro2t_and_srt2o(all_triples_ids)
+        parser = expression.SamplingParser(
+            self.entities_ids,
+            self.relations_ids + [r + max_relation_id for r in self.relations_ids],
+            self.timestamps_ids,
+            srt_o, sro_t,
+        )
+
+        # 3. sampling
+        sample_count = self.triple_count // 2
+        all_queries_answers = {}
+        structure_func_name_list = parser.query_structures.keys()
+        for func_name in structure_func_name_list:
+            func = parser.eval(func_name)
+            param_name_list = get_param_name_list(func)
+            queries_answers = []
+            for i in range(sample_count):
+                answers = []
+                placeholders = None
+                while len(answers) <= 0:
+                    placeholders = get_placeholder_list(func)
+                    answers = func(placeholders)
+                queries = placeholder2sample(placeholders)
+                queries_answers.append((queries, answers))
+
+            data = {
+                "args": param_name_list,
+                "queries_answers": queries_answers
+            }
+            all_queries_answers[func_name] = data
+
+        # 4. split train, valid, test (8:1:1)
+        train_queries_answers = {}
+        valid_queries_answers = {}
+        test_queries_answers = {}
+        for k, v in all_queries_answers.items():
+            queries_answers = v["queries_answers"]
+            train_idx = int(len(queries_answers) * 0.8)
+            valid_idx = train_idx + int(len(queries_answers) * 0.1)
+            train_qa = queries_answers[:train_idx]
+            valid_qa = queries_answers[train_idx:valid_idx]
+            test_qa = queries_answers[valid_idx:]
+            self.train_queries_answers[k] = {
+                "args": v["args"],
+                "queries_answers": train_qa
+            }
+            self.valid_queries_answers[k] = {
+                "args": v["args"],
+                "queries_answers": valid_qa
+            }
+            self.test_queries_answers[k] = {
+                "args": v["args"],
+                "queries_answers": test_qa
+            }
+            self.query_meta[k] = {
+                "queries_count": len(queries_answers),
+                "avg_answers_count": sum([len(a) for q, a in queries_answers]) / len(queries_answers)
+            }
 
     def cache_all_data(self):
         TemporalKnowledgeData.cache_all_data(self)
-        # TODO cache
+        cache_data(self.train_queries_answers, self.cache_path.cache_train_queries_answers_path)
+        cache_data(self.valid_queries_answers, self.cache_path.cache_valid_queries_answers_path)
+        cache_data(self.test_queries_answers, self.cache_path.cache_test_queries_answers_path)
 
     def read_meta(self, meta):
         TemporalKnowledgeData.read_meta(self, meta)

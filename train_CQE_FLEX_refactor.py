@@ -84,7 +84,8 @@ class Intersection(nn.Module):
         feature_attention = F.softmax(self.feature_layer_2(F.relu(self.feature_layer_1(logits))), dim=0)
         feature = torch.sum(feature_attention * feature, dim=0)
 
-        logic = torch.prod(logic, dim=0)
+        logic, _ = torch.min(logic, dim=0)
+        # logic = torch.prod(logic, dim=0)
         return feature, logic
 
 

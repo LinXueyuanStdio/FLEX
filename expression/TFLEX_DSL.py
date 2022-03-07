@@ -33,8 +33,8 @@ class BasicParser(Interpreter):
 
 class SamplingParser(BasicParser):
     def __init__(self, entity_ids: List[int], relation_ids: List[int], timestamp_ids: List[int],
-                 srt2o: Dict[int, Dict[int, Dict[int, List[int]]]],  # srt->o | entity,relation,timestamp->entity
-                 sro2t: Dict[int, Dict[int, Dict[int, List[int]]]],  # sro->t | entity,relation,entity->timestamp
+                 srt2o: Dict[int, Dict[int, Dict[int, Set[int]]]],  # srt->o | entity,relation,timestamp->entity
+                 sro2t: Dict[int, Dict[int, Dict[int, Set[int]]]],  # sro->t | entity,relation,entity->timestamp
                  ):
         # example
         # qe = Pe(e,r,after(Pt(e,r,e)))
