@@ -39,12 +39,13 @@ def convert_to_feature(x):
 
 
 class Projection(nn.Module):
-    def __init__(self, dim, hidden_dim=1600, num_layers=2):
+    def __init__(self, dim, hidden_dim=1600, num_layers=2, drop=0.1):
         super(Projection, self).__init__()
         self.entity_dim = dim
         self.relation_dim = dim
         self.hidden_dim = hidden_dim
         self.num_layers = num_layers
+        self.dropout = nn.Dropout(drop)
         self.layer1 = nn.Linear(self.entity_dim + self.relation_dim, self.hidden_dim)
         self.layer0 = nn.Linear(self.hidden_dim, self.entity_dim + self.relation_dim)
         for nl in range(2, num_layers + 1):
@@ -54,8 +55,10 @@ class Projection(nn.Module):
 
     def forward(self, q_feature, q_logic, r_feature, r_logic):
         x = torch.cat([q_feature + r_feature, q_logic + r_logic], dim=-1)
+        x = self.dropout(x)
         for nl in range(1, self.num_layers + 1):
             x = F.relu(getattr(self, "layer{}".format(nl))(x))
+            x = self.dropout(x)
         x = self.layer0(x)
 
         feature, logic = torch.chunk(x, 2, dim=-1)
@@ -120,7 +123,7 @@ class FLEX(nn.Module):
         self.entity_feature_embedding = nn.Embedding(nentity, self.entity_dim)
         self.relation_feature_embedding = nn.Embedding(nrelation, self.relation_dim)
         self.relation_logic_embedding = nn.Embedding(nrelation, self.relation_dim)
-        self.projection = Projection(self.entity_dim)
+        self.projection = Projection(self.entity_dim, drop=drop)
         self.intersection = Intersection(self.entity_dim)
         self.negation = Negation()
 
