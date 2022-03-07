@@ -2,7 +2,7 @@
 @author: lxy
 @email: linxy59@mail2.sysu.edu.cn
 @date: 2021/10/26
-@description: null
+@description: 分结构，按每个结构依次训练
 """
 from __future__ import absolute_import
 from __future__ import division

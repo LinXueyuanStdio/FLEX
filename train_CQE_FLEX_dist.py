@@ -748,7 +748,7 @@ class MyExperiment(Experiment):
 
 
 @click.command()
-@click.option("--data_home", type=str, default="data", help="The folder path to dataset.")
+@click.option("--data_home", type=str, default="data/reasoning", help="The folder path to dataset.")
 @click.option("--dataset", type=str, default="FB15k-237", help="Which dataset to use: FB15k, FB15k-237, NELL.")
 @click.option("--name", type=str, default="FLEX_base", help="Name of the experiment.")
 @click.option("--start_step", type=int, default=0, help="start step.")
