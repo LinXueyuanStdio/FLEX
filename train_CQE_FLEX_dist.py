@@ -748,6 +748,7 @@ class MyExperiment(Experiment):
 
 
 @click.command()
+@click.option("--data_home", type=str, default="data", help="The folder path to dataset.")
 @click.option("--dataset", type=str, default="FB15k-237", help="Which dataset to use: FB15k, FB15k-237, NELL.")
 @click.option("--name", type=str, default="FLEX_base", help="Name of the experiment.")
 @click.option("--start_step", type=int, default=0, help="start step.")
@@ -770,7 +771,7 @@ class MyExperiment(Experiment):
 @click.option('--gamma', type=float, default=30.0, help="margin in the loss")
 @click.option('--center_reg', type=float, default=0.02, help='center_reg for ConE, center_reg balances the in_cone dist and out_cone dist')
 @click.option('--local_rank', type=int,default=-1, help='node rank for distributed training')
-def main(dataset, name,
+def main(data_home, dataset, name,
          start_step, max_steps, every_test_step, every_valid_step,
          batch_size, test_batch_size, negative_sample_size,
          train_device, test_device,
@@ -782,11 +783,11 @@ def main(dataset, name,
     output = OutputSchema(dataset + "-" + name)
 
     if dataset == "FB15k-237":
-        dataset = FB15k_237_BetaE()
+        dataset = FB15k_237_BetaE(data_home)
     elif dataset == "FB15k":
-        dataset = FB15k_BetaE()
+        dataset = FB15k_BetaE(data_home)
     elif dataset == "NELL":
-        dataset = NELL_BetaE()
+        dataset = NELL_BetaE(data_home)
     cache = ComplexQueryDatasetCachePath(dataset.root_path)
     data = ComplexQueryData(cache_path=cache)
     data.load(evaluate_union, tasks)
