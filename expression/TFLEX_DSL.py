@@ -4,10 +4,11 @@
 @date: 2022/2/21
 @description: null
 """
+import inspect
 import random
 from typing import List, Set, Dict, Union
 
-from .ParamSchema import Placeholder, BatchSamplingQuery
+from .ParamSchema import Placeholder, BatchSamplingQuery, get_param_name_list, get_placeholder_list
 from .symbol import Interpreter
 
 
@@ -17,9 +18,6 @@ class BasicParser(Interpreter):
     """
 
     def __init__(self, variables, neural_ops):
-        pre_defined_functions = {
-            "get_param_name_list": get_param_name_list
-        }
         alias = {
             "Pe": neural_ops["EntityProjection"],
             "Pt": neural_ops["TimeProjection"],
@@ -44,8 +42,8 @@ class SamplingParser(BasicParser):
         all_entity_ids = set(entity_ids)
         all_timestamp_ids = set(timestamp_ids)
         max_timestamp_id = max(timestamp_ids)
-        print(srt2o)
-        print(sro2t)
+        # print(srt2o)
+        # print(sro2t)
 
         variables = {
             "e": Placeholder("e"),
@@ -133,7 +131,12 @@ class SamplingParser(BasicParser):
             "TimeAfter": lambda x: BatchSamplingQuery(answers=x.answers, timestamps=set([t for t in timestamp_ids if t > max(x.timestamps)] if len(x.timestamps) > 0 else all_timestamp_ids)),
             "TimeNext": lambda x: BatchSamplingQuery(answers=x.answers, timestamps=set([min(t + 1, max_timestamp_id) for t in x.timestamps] if len(x.timestamps) > 0 else all_timestamp_ids)),
         }
-        super().__init__(variables=variables, neural_ops=neural_ops)
+        predefine = {
+            "get_param_name_list": lambda x: x.argnames,
+            "get_placeholder_list": get_placeholder_list,
+            "signature": inspect.signature,
+        }
+        super().__init__(variables=variables, neural_ops=dict(**neural_ops, **predefine))
         self.ast_cache = {}
         self.query_structures = {
             "Pe_aPt": "def Pe_aPt(e1, r1, e2, r2, e3): return Pe(e1, r1, after(Pt(e2, r2, e3)))",
@@ -141,6 +144,7 @@ class SamplingParser(BasicParser):
         }
         for name, qs in self.query_structures.items():
             self.__pre_define(qs)
+        self.func2args = {}
 
     def __pre_define(self, structure: str):
         if structure in self.ast_cache:

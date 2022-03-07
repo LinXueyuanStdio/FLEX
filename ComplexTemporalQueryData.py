@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import List, Tuple, Dict, Set, Union, Any
 
 import expression
-from expression.ParamSchema import get_param_name_list, get_placeholder_list, placeholder2sample
+from expression.ParamSchema import get_placeholder_list, placeholder2sample
 from toolbox.data.DataSchema import DatasetCachePath, BaseData
 from toolbox.data.DatasetSchema import RelationalTripletDatasetSchema
 from toolbox.data.functional import read_cache, cache_data
@@ -472,14 +472,21 @@ class ComplexQueryData(TemporalKnowledgeData):
         structure_func_name_list = parser.query_structures.keys()
         for func_name in structure_func_name_list:
             func = parser.eval(func_name)
-            param_name_list = get_param_name_list(func)
+            param_name_list = parser.eval(f"get_param_name_list({func_name})")
+            print(param_name_list)
             queries_answers = []
             for i in range(sample_count):
                 answers = []
                 placeholders = None
                 while len(answers) <= 0:
-                    placeholders = get_placeholder_list(func)
-                    answers = func(placeholders)
+                    placeholders = parser.eval(f"get_placeholder_list({func_name})")
+                    sampling_query_answers = func(*placeholders)
+                    if sampling_query_answers.answers is not None and len(sampling_query_answers.answers) > 0:
+                        answers = sampling_query_answers.answers
+                    elif sampling_query_answers.timestamps is not None and len(sampling_query_answers.timestamps) > 0:
+                        answers = sampling_query_answers.timestamps
+                    else:
+                        answers = set()
                 queries = placeholder2sample(placeholders)
                 queries_answers.append((queries, answers))
 
@@ -490,9 +497,6 @@ class ComplexQueryData(TemporalKnowledgeData):
             all_queries_answers[func_name] = data
 
         # 4. split train, valid, test (8:1:1)
-        train_queries_answers = {}
-        valid_queries_answers = {}
-        test_queries_answers = {}
         for k, v in all_queries_answers.items():
             queries_answers = v["queries_answers"]
             train_idx = int(len(queries_answers) * 0.8)
@@ -514,7 +518,7 @@ class ComplexQueryData(TemporalKnowledgeData):
             }
             self.query_meta[k] = {
                 "queries_count": len(queries_answers),
-                "avg_answers_count": sum([len(a) for q, a in queries_answers]) / len(queries_answers)
+                "avg_answers_count": sum([len(a) for q, a in queries_answers]) / len(queries_answers),
             }
 
     def cache_all_data(self):

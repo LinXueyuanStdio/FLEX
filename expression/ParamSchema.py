@@ -7,6 +7,8 @@
 from inspect import signature
 from typing import List, Tuple, Optional
 
+from expression.symbol import Procedure
+
 type_entity = "e"
 type_relation = "r"
 type_timestamp = "t"
@@ -84,6 +86,8 @@ def get_param_name_list(func) -> List[str]:
     """
     根据函数签名，获得函数的入参列表
     """
+    if isinstance(func, Procedure):
+        return func.argnames
     sig_func = signature(func)
     return list(sig_func.parameters.keys())
 
