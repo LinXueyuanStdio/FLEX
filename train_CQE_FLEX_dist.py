@@ -373,6 +373,13 @@ class FLEX(nn.Module):
             return 'e', ('r', 'r')
 
 
+def reduce_mean(tensor, nprocs):
+    rt = tensor.clone()
+    dist.all_reduce(rt, op=dist.ReduceOp.SUM)
+    rt /= nprocs
+    return rt
+
+
 class MyExperiment(Experiment):
 
     def __init__(self, output: OutputSchema, data: ComplexQueryData,
@@ -397,6 +404,7 @@ class MyExperiment(Experiment):
 
         self.log("loading data")
         nprocs = torch.cuda.device_count()
+        self.nprocs = nprocs
         dist.init_process_group(backend='nccl')
         torch.cuda.set_device(local_rank)
         batch_size = batch_size // nprocs
@@ -578,21 +586,21 @@ class MyExperiment(Experiment):
     def train(self, model, optimizer, train_iterator, step, device):
         model.train()
         model.cuda(device)
-        optimizer.zero_grad()
 
         positive_sample, negative_sample, subsampling_weight, batch_queries, query_structures = next(train_iterator)
-        batch_queries_dict: Dict[List[str], list] = collections.defaultdict((lambda:[]))
-        batch_idxs_dict: Dict[List[str], List[int]] = collections.defaultdict((lambda:[]))
+        batch_queries_dict: Dict[List[str], list] = collections.defaultdict(list)
+        batch_idxs_dict: Dict[List[str], List[int]] = collections.defaultdict(list)
+        batch_queries_tensor_dict = {}
         for i, query in enumerate(batch_queries):  # group queries with same structure
             batch_queries_dict[query_structures[i]].append(query)
             batch_idxs_dict[query_structures[i]].append(i)
         for query_structure in batch_queries_dict:
-            batch_queries_dict[query_structure] = torch.LongTensor(batch_queries_dict[query_structure]).cuda(device, non_blocking=True)
+            batch_queries_tensor_dict[query_structure] = torch.LongTensor(batch_queries_dict[query_structure]).cuda(device, non_blocking=True)
         positive_sample = positive_sample.cuda(device, non_blocking=True)
         negative_sample = negative_sample.cuda(device, non_blocking=True)
         subsampling_weight = subsampling_weight.cuda(device, non_blocking=True)
 
-        positive_logit, negative_logit, subsampling_weight, _ = model(positive_sample, negative_sample, subsampling_weight, batch_queries_dict, batch_idxs_dict)
+        positive_logit, negative_logit, subsampling_weight, _ = model(positive_sample, negative_sample, subsampling_weight, batch_queries_tensor_dict, batch_idxs_dict)
 
         negative_score = F.logsigmoid(-negative_logit).mean(dim=1)
         positive_score = F.logsigmoid(positive_logit).squeeze(dim=1)
@@ -602,8 +610,16 @@ class MyExperiment(Experiment):
         negative_sample_loss /= subsampling_weight.sum()
 
         loss = (positive_sample_loss + negative_sample_loss) / 2
+
+        optimizer.zero_grad()
         loss.backward()
         optimizer.step()
+
+        torch.distributed.barrier()
+        loss = reduce_mean(loss, self.nprocs)
+        positive_sample_loss = reduce_mean(positive_sample_loss, self.nprocs)
+        negative_sample_loss = reduce_mean(negative_sample_loss, self.nprocs)
+
         log = {
             'positive_sample_loss': positive_sample_loss.item(),
             'negative_sample_loss': negative_sample_loss.item(),
@@ -619,6 +635,7 @@ class MyExperiment(Experiment):
         step = 0
         h10 = None
         batch_queries_dict = collections.defaultdict(list)
+        batch_queries_tensor_dict = {}
         batch_idxs_dict = collections.defaultdict(list)
         for negative_sample, queries, queries_unflatten, query_structures in test_dataloader:
             batch_queries_dict.clear()
@@ -627,10 +644,10 @@ class MyExperiment(Experiment):
                 batch_queries_dict[query_structures[i]].append(query)
                 batch_idxs_dict[query_structures[i]].append(i)
             for query_structure in batch_queries_dict:
-                batch_queries_dict[query_structure] = torch.LongTensor(batch_queries_dict[query_structure]).cuda(device, non_blocking=True)
+                batch_queries_tensor_dict[query_structure] = torch.LongTensor(batch_queries_dict[query_structure]).cuda(device, non_blocking=True)
             negative_sample = negative_sample.cuda(device, non_blocking=True)
 
-            _, negative_logit, _, idxs = model(None, negative_sample, None, batch_queries_dict, batch_idxs_dict)
+            _, negative_logit, _, idxs = model(None, negative_sample, None, batch_queries_tensor_dict, batch_idxs_dict)
             queries_unflatten = [queries_unflatten[i] for i in idxs]
             query_structures = [query_structures[i] for i in idxs]
             argsort = torch.argsort(negative_logit, dim=1, descending=True)
