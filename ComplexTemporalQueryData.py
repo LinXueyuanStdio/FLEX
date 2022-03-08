@@ -4,12 +4,13 @@
 @date: 2022/3/2
 @description: null
 """
+import random
 from collections import defaultdict
 from pathlib import Path
 from typing import List, Tuple, Dict, Set, Union, Any
 
 import expression
-from expression.ParamSchema import get_placeholder_list, placeholder2sample
+from expression.ParamSchema import placeholder2sample
 from toolbox.data.DataSchema import DatasetCachePath, BaseData
 from toolbox.data.DatasetSchema import RelationalTripletDatasetSchema
 from toolbox.data.functional import read_cache, cache_data
@@ -499,6 +500,7 @@ class ComplexQueryData(TemporalKnowledgeData):
         # 4. split train, valid, test (8:1:1)
         for k, v in all_queries_answers.items():
             queries_answers = v["queries_answers"]
+            random.shuffle(queries_answers)
             train_idx = int(len(queries_answers) * 0.8)
             valid_idx = train_idx + int(len(queries_answers) * 0.1)
             train_qa = queries_answers[:train_idx]
@@ -516,9 +518,25 @@ class ComplexQueryData(TemporalKnowledgeData):
                 "args": v["args"],
                 "queries_answers": test_qa
             }
+
+            def avg_answers_count(qa):
+                return sum([len(a) for q, a in qa]) / len(qa)
+
             self.query_meta[k] = {
                 "queries_count": len(queries_answers),
-                "avg_answers_count": sum([len(a) for q, a in queries_answers]) / len(queries_answers),
+                "avg_answers_count": avg_answers_count(queries_answers),
+                "train": {
+                    "queries_count": len(train_qa),
+                    "avg_answers_count": avg_answers_count(train_qa),
+                },
+                "valid": {
+                    "queries_count": len(valid_qa),
+                    "avg_answers_count": avg_answers_count(valid_qa),
+                },
+                "test": {
+                    "queries_count": len(test_qa),
+                    "avg_answers_count": avg_answers_count(test_qa),
+                },
             }
 
     def cache_all_data(self):
