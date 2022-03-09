@@ -238,13 +238,13 @@ def save_extra_data(path, data):
         json.dump(data, f)
 
 
-def _get_config_names(root_log_dir):
+def _get_config_names(app_root_dir):
     """
     给定log的路径, 返回下面所有结尾为.cfg的文件
 
-    :param str, root_log_dir:
+    :param str, app_root_dir:
     :return: list(dir)
     """
-    configs = glob.glob(os.path.join(root_log_dir, '*.cfg'))
+    configs = glob.glob(os.path.join(app_root_dir, '*.cfg'))
     configs = [os.path.basename(config) for config in configs]
     return configs

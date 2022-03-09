@@ -33,6 +33,7 @@ def show_folder():
     if res is not None:
         return jsonify(res)
     if id:
+        # TODO 远程日志服务器
         log_dir = all_data['root_log_dir']
         folder = os.path.join(log_dir, id)
         if os.path.relpath(folder, log_dir).startswith('.'):

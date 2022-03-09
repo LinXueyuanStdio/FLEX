@@ -26,14 +26,15 @@ def check_uuid_summary(gold_uuid, _uuid):
                 'msg': "It seems like your page is out-of-date, please refresh."}
 
 
-def read_summary(root_log_dir: str, summary_name):
+def read_summary(app_root_dir: str, summary_name):
     """
+    summary 是 app 自己的数据，不是日志生产者的数据
 
-    :param root_log_dir: 存放logs的地方。
+    :param app_root_dir: 存放logs的地方。
     :param summary_name: str，summary的名称
     :return: {}不包含summary_name
     """
-    summary_fp = os.path.join(root_log_dir, 'summaries', summary_name + '.summary')
+    summary_fp = os.path.join(app_root_dir, 'summaries', summary_name + '.summary')
     summary = {}
     if os.path.exists(summary_fp):
         with open(summary_fp, 'r', encoding='utf-8') as f:
@@ -41,8 +42,8 @@ def read_summary(root_log_dir: str, summary_name):
     return summary
 
 
-def _get_all_summuries(root_log_dir: str):
-    summary_dir = os.path.join(root_log_dir, 'summaries')
+def _get_all_summuries(app_root_dir: str):
+    summary_dir = os.path.join(app_root_dir, 'summaries')
     summary_names = []
     if os.path.exists(summary_dir):
         filenames = os.listdir(summary_dir)
@@ -52,16 +53,16 @@ def _get_all_summuries(root_log_dir: str):
     return summary_names
 
 
-def save_summary(root_log_dir, summary_name, summary):
+def save_summary(app_root_dir, summary_name, summary):
     """
     保存summary到硬盘中
 
-    :param root_log_dir:
+    :param app_root_dir:
     :param summary_name: str
     :param summary:
     :return:
     """
-    summary_dir = os.path.join(root_log_dir, 'summaries')
+    summary_dir = os.path.join(app_root_dir, 'summaries')
     try:
         os.makedirs(summary_dir, exist_ok=True)
         with open(os.path.join(summary_dir, summary_name + '.summary'), 'w', encoding='utf-8') as f:
@@ -74,14 +75,14 @@ def save_summary(root_log_dir, summary_name, summary):
         return {'status': 'fail', 'msg': 'Fail to save your summaries.'}
 
 
-def delete_summary(root_log_dir, summary_name):
+def delete_summary(app_root_dir, summary_name):
     """
     删除summary
-    :param root_log_dir:
+    :param app_root_dir:
     :param summary_name:
     :return:
     """
-    summary_dir = os.path.join(root_log_dir, 'summaries')
+    summary_dir = os.path.join(app_root_dir, 'summaries')
     try:
         fp = os.path.join(summary_dir, summary_name + '.summary')
         if os.path.exists(fp):
@@ -95,14 +96,14 @@ def delete_summary(root_log_dir, summary_name):
         return False
 
 
-def read_logs(servers, log_name, app_log_dir, extra_data=None):
+def read_logs(servers, log_name, app_root_dir, extra_data=None):
     # log_name可以为str(config_name), 或list[str]:每一项为一个log; root_log_dir是从哪里读取log
     log_agent = LogAgent()
     if isinstance(log_name, str):  # 传入的是实际上config_name
-        config_names = _get_config_names(app_log_dir)
+        config_names = _get_config_names(app_root_dir)
         if config_names.index(log_name) == -1:
             return {'status': 'fail', 'msg': f'There is no config named {log_name}.'}
-        logs, configs, extra_data = get_log_and_extra_based_on_config(log_agent, app_log_dir, log_name)
+        logs, configs, extra_data = get_log_and_extra_based_on_config(log_agent, app_root_dir, log_name)
         # 获取所有的hyper,other以及metric
     elif isinstance(log_name, list):
         log_names = log_name
@@ -114,7 +115,7 @@ def read_logs(servers, log_name, app_log_dir, extra_data=None):
                 if log not in extra_data:
                     print(colored_string(f"The following logs are not found {list(not_found_log)}.", 'blue'))
         # 将extra_data合并到log中
-        if extra_data == None:
+        if extra_data is None:
             extra_data = {}
         extra_log_dict = {key: value for key, value in zip(list(extra_data.keys()),
                                                            expand_dict(list(extra_data.values()), connector='-'))}
@@ -209,8 +210,9 @@ def get_grouped_data(data, keys):
 
 
 def merge(a, b, path=None):
-    "merges b into a"
-    if path is None: path = []
+    """merges b into a"""
+    if path is None:
+        path = []
     for key in b:
         if key in a:
             if isinstance(a[key], dict) and isinstance(b[key], dict):
@@ -272,9 +274,9 @@ def _summary_eq(summary1, summary2):
 
 
 def generate_summary_table(vertical, horizontals, method, criteria, results, result_maps, selected_data,
-                           remote_log_servers, root_log_dir, extra_data, extra_summary):
+                           remote_log_servers, app_root_dir, extra_data, extra_summary):
     # extra_data: [{一级}]
-    logs = read_logs(remote_log_servers, selected_data, root_log_dir, extra_data)
+    logs = read_logs(remote_log_servers, selected_data, app_root_dir, extra_data)
     if isinstance(logs, dict):  # 发生了错误了
         return logs
 

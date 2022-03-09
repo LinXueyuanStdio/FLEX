@@ -86,8 +86,8 @@ def get_chart_ico():
 
 def start_app(log_dir, log_config_name, standby_hours, start_port, ip='0.0.0.0', token=None):
     """
-    log_dir 日志目录
-    log_config_name app的配置
+    log_dir app日志目录
+    log_config_name app的配置文件名
     start_port 端口。如果该端口不可用，会自动选一个可用的
     standby_hours 空转小时数。如果超过这个时间没有任何操作，会自动停止运行，防止资源浪费
     """

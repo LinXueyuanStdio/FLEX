@@ -25,10 +25,10 @@ FILE_NAME = 'file.log'
 def get_table():
     global first_time_access
     if not first_time_access:
-        log_dir = all_data['root_log_dir']
+        app_root_dir = all_data['root_log_dir']
         log_config_name = all_data['log_config_name']
         log_agent = all_data['log_agent']
-        all_data.update(prepare_data(log_agent, log_dir, log_config_name, all_data))
+        all_data.update(prepare_data(log_agent, app_root_dir, log_config_name, all_data))
 
     first_time_access = False
     data = all_data['data'].copy()  # all_data['data'] 只包含从硬盘的读取的log的信息
@@ -61,11 +61,9 @@ def refresh_table():
         else:
             new_logs, updated_logs = prepare_incremental_data(all_data['data'], new_logs, all_data['field_columns'],
                                                               all_data['filter_condition'],
-                                                              all_data['settings'][
-                                                                  'Ignore_filter_condition_not_exist_log'])
+                                                              all_data['settings']['Ignore_filter_condition_not_exist_log'])
             if len(new_logs) == 0 and len(updated_logs) == 0:
-                return jsonify(status='success', msg='Update successfully, no update found.', new_logs=[],
-                               updated_logs=[])
+                return jsonify(status='success', msg='Update successfully, no update found.', new_logs=[], updated_logs=[])
             replace_nan_inf(new_logs, all_data['basic_settings']['round_to'])
             replace_nan_inf(updated_logs, all_data['basic_settings']['round_to'])
             return jsonify(status='success',
@@ -224,9 +222,9 @@ def save():
     if 'condition' in request.json:
         condition = request.json['condition']  # {'key': 'value'}
         all_data['filter_condition'].update(condition)
-    log_dir = all_data['root_log_dir']
+    app_root_dir = all_data['root_log_dir']
     log_config_name = all_data['log_config_name']
-    save_all_data(all_data, log_dir, log_config_name, force_save=True)
+    save_all_data(all_data, app_root_dir, log_config_name, force_save=True)
     return jsonify(status='success', msg='')
 
 

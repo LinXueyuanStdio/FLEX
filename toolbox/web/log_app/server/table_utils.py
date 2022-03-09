@@ -330,19 +330,19 @@ def expand_dict(dicts, connector='-'):
     return logs
 
 
-def get_log_and_extra_based_on_config(log_agent, app_log_dir, log_config_name):
+def get_log_and_extra_based_on_config(log_agent, app_root_dir, log_config_name):
     """
     根据config文件读取log，并将extra里面的数据进行替换. 将重置 log_agent 的状态.
 
     :param log_agent: LogAgent
-    :param app_log_dir: str
+    :param app_root_dir: str
     :param log_config_name: str
     :return: logs: [{}, {}];
              configs: {}, 包含配置文件中的所有内容
              extra_data:{}， 包含log_extra_data.txt的所有内容
     """
-    app_log_dir = os.path.abspath(app_log_dir)
-    log_config_path = os.path.join(app_log_dir, log_config_name)
+    app_root_dir = os.path.abspath(app_root_dir)
+    log_config_path = os.path.join(app_root_dir, log_config_name)
     log_config_path = os.path.abspath(log_config_path)
     configs = read_server_config(log_config_path)
 
@@ -353,10 +353,10 @@ def get_log_and_extra_based_on_config(log_agent, app_log_dir, log_config_name):
     log_agent.set_remote_log_servers(remote_log_servers)
     logs = log_agent.read_logs(deleted_log_ids)
     if len(logs) == 0:
-        raise ValueError("No valid log found in {}.".format(app_log_dir))
+        raise ValueError("No valid log found in {}.".format(app_root_dir))
 
     # read extra_data
-    extra_data_path = os.path.join(app_log_dir, 'log_extra_data.txt')
+    extra_data_path = os.path.join(app_root_dir, 'log_extra_data.txt')
     extra_data = {}
     if os.path.exists(extra_data_path):
         extra_data = read_extra_data(extra_data_path)
@@ -388,20 +388,20 @@ def get_log_and_extra_based_on_config(log_agent, app_log_dir, log_config_name):
     return filtered_logs, configs, extra_data
 
 
-def prepare_data(log_agent, app_log_dir, log_config_name, all_data=None):
+def prepare_data(log_agent, app_root_dir, log_config_name, all_data=None):
     """
     准备好需要的数据， 应该包含从log dir中读取数据
 
     :param log_agent: 用于读取数据的Reader对象
-    :param app_log_dir: str, 哪里是存放config文件的
-    :param log_config_name: 从 app_log_dir 读取的 config 文件
+    :param app_root_dir: str, 哪里是存放config文件的
+    :param log_config_name: 从 app_root_dir 读取的 config 文件
     :param all_data: dict
 
     :return:
     """
     print("Start preparing data...")
     # 1. 从log读取数据
-    logs, configs, extra_data = get_log_and_extra_based_on_config(log_agent, app_log_dir, log_config_name)
+    logs, configs, extra_data = get_log_and_extra_based_on_config(log_agent, app_root_dir, log_config_name)
 
     if all_data is None:
         all_data = {}
@@ -413,9 +413,10 @@ def prepare_data(log_agent, app_log_dir, log_config_name, all_data=None):
     column_order = all_data['column_order']
     editable_columns = all_data['editable_columns']
     exclude_columns = all_data['exclude_columns']
-    ignore_unchanged_columns = all_data['basic_settings']['ignore_unchanged_columns']
-    str_max_length = all_data['basic_settings']['str_max_length']
-    round_to = all_data['basic_settings']['round_to']
+    basic_settings = all_data['basic_settings']
+    ignore_unchanged_columns = basic_settings['ignore_unchanged_columns']
+    str_max_length = basic_settings['str_max_length']
+    round_to = basic_settings['round_to']
 
     # 3. 获取从extra_log来的数量
     num_extra_log = 0
@@ -441,13 +442,13 @@ def prepare_data(log_agent, app_log_dir, log_config_name, all_data=None):
     return all_data
 
 
-def save_all_data(all_data, log_dir, log_config_name, force_save=False):
+def save_all_data(all_data, app_root_dir, log_config_name, force_save=False):
     # 保存settings和extra文件, 会根据情况判断是否存储。
     if all_data['settings']['Save_settings'] or force_save:  # 如果需要保存
-        log_config_path = os.path.join(log_dir, log_config_name)
+        log_config_path = os.path.join(app_root_dir, log_config_name)
         save_config(all_data, config_path=log_config_path)
         # save editable columns
-        extra_data_path = os.path.join(log_dir, 'log_extra_data.txt')
+        extra_data_path = os.path.join(app_root_dir, 'log_extra_data.txt')
         if len(all_data['extra_data']) != 0:
             save_extra_data(extra_data_path, all_data['extra_data'])  # extra_data是一个dict。key为id，value为内容
         else:

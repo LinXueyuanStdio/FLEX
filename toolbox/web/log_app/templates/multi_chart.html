@@ -4,8 +4,16 @@
     <meta charset="UTF-8">
     <meta content="width=device-width,height=device-height" name="viewport">
     <link href="/chart.ico" rel="shortcut icon">
-    <title>chart-{{log_dir}}</title>
-    <style>::-webkit-scrollbar{display:none;}html,body{overflow:auto;height:100%;margin:0;}</style>
+    <title>chart-{{ log_dir }}</title>
+    <style>::-webkit-scrollbar {
+        display: none;
+    }
+
+    html, body {
+        overflow: auto;
+        height: 100%;
+        margin: 0;
+    }</style>
     <link href="/static/css/bootstrap.css" rel="stylesheet"/>
     <link href="/static/css/table.css" rel="stylesheet"/>
     <link href="/static/css/bootstrap-slider.css" rel="stylesheet"/>
@@ -17,7 +25,7 @@
     <script src="/static/js/chart.js"></script>
     <style>
         .slider-selection {
-	        background: #B8B8B8;
+            background: #B8B8B8;
         }
 
 
@@ -25,7 +33,7 @@
     <script>
         var prompt = function (message, time) {
             $("#alertDiv").delay(time || 5000).fadeOut();
-            const id  = "alertDiv_" + new Date().getTime() + "_" + (Math.random() * 10000).toFixed();
+            const id = "alertDiv_" + new Date().getTime() + "_" + (Math.random() * 10000).toFixed();
             $("body").append(`
             <div id="${id}" class="alert alert-success" role="alert" style="position: fixed; top: 12px; left: 12px;
             z-index:999999">
@@ -39,29 +47,28 @@
         };
 
         // 成功提示
-        var success_prompt = function(message, time)
-        {
+        var success_prompt = function (message, time) {
             prompt(message, time);
         };
 
     </script>
     <style>
-    .g2-legend {
-        width: 250px !important;
-        height: 100%;
-        font-size: 14px !important;
-        color: #595959 !important;
-    }
+        .g2-legend {
+            width: 250px !important;
+            height: 100%;
+            font-size: 14px !important;
+            color: #595959 !important;
+        }
 
-    .g2-legend-list {
-        margin-top: 10px !important
-    }
+        .g2-legend-list {
+            margin-top: 10px !important
+        }
 
-    .g2-legend-text {
-        margin-top: 3px !important;
-        color: rgb(140, 140, 140);
-        display: inline-flex;
-    }
+        .g2-legend-text {
+            margin-top: 3px !important;
+            color: rgb(140, 140, 140);
+            display: inline-flex;
+        }
 
 
     </style>
@@ -87,7 +94,8 @@
     </div>
 </div>
 <div id="charts"></div>
-<script>/*Fixing iframe window.innerHeight 0 issue in Safari*/document.body.clientHeight;</script>
+<script>/*Fixing iframe window.innerHeight 0 issue in Safari*/
+document.body.clientHeight;</script>
 
 <!--range-->
 <div aria-hidden="true" aria-labelledby="myModalLabel" class="modal fade" id="range_box" role="dialog" style="font-size: 18px"
@@ -112,18 +120,18 @@
     const multi_chart_uuid = '{{ multi_chart_uuid }}';
     {#const finish_status = '{{ finish_status|tojson }}';#}
     const titles = '{{ titles }}'.split(',');
-    if(message.length>0){
+    if (message.length > 0) {
         bootbox.alert("Fail to load data, " + message);
     }
-    const logs='{{ logs }}'.split(',');
+    const logs = '{{ logs }}'.split(',');
     const finish_status = {};
-    if(firstData.hasOwnProperty('finish_logs')){
-        for(var i=0;i<firstData['finish_logs'].length;i++){
+    if (firstData.hasOwnProperty('finish_logs')) {
+        for (var i = 0; i < firstData['finish_logs'].length; i++) {
             finish_status[firstData['finish_logs'][i]] = true;
         }
     }
-    for(var i=0;i<logs.length;i++){
-        if(!finish_status.hasOwnProperty(logs[i])){
+    for (var i = 0; i < logs.length; i++) {
+        if (!finish_status.hasOwnProperty(logs[i])) {
             finish_status[logs[i]] = false;
         }
     }

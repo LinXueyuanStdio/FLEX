@@ -1,16 +1,14 @@
-
-
 // 负责summary的table的各种功能
 
 
 function initTable() {
     // 重新生成Table
     var columns = convert_to_columns(window.column_order, window.column_dict,
-                        window.hidden_columns);
+        window.hidden_columns);
     add_checkbox(columns);
 
     var data = [];
-    for(var key in window.table_data){
+    for (var key in window.table_data) {
         data.push(window.table_data[key]);
     }
 
@@ -18,32 +16,30 @@ function initTable() {
 
     // 在toggle新增加一个add row的操作
     var new_button;
-    new_button = generate_a_button("btn btn-default", 'add', 'Add row', AddRowModal,
-       '<i class="glyphicon glyphicon-plus"></i>');
+    new_button = generate_a_button("btn btn-default", 'add', 'Add row', AddRowModal, '<i class="glyphicon glyphicon-plus"></i>');
     new_button.setAttribute('data-toggle', 'modal');
     new_button.setAttribute('data-target', '#row_box');
     document.getElementsByClassName('columns').item(0).appendChild(new_button);
     // 增加一个保存按钮
-    new_button = generate_a_button("btn btn-default", 'save', 'Save', saveSummary,
-           '<i class="glyphicon glyphicon-floppy-save"></i>');
+    new_button = generate_a_button("btn btn-default", 'save', 'Save', saveSummary, '<i class="glyphicon glyphicon-floppy-save"></i>');
     document.getElementsByClassName('columns').item(0).appendChild(new_button);
 }
 
-function saveSummary(){
+function saveSummary() {
     // 弹出一个modal, 设置summary的名称
-    if(window.CURRENT_SUMMARY_NAME!=='Create New Summary' && window.CURRENT_SUMMARY_NAME!==undefined){
+    if (window.CURRENT_SUMMARY_NAME !== 'Create New Summary' && window.CURRENT_SUMMARY_NAME !== undefined) {
         bootbox.prompt({
             title: "Summary name",
             value: window.CURRENT_SUMMARY_NAME,
-            inputType:'text',
+            inputType: 'text',
             callback: function (result) {
                 updateSummaryToServer(result);
             }
         })
-    }else{
+    } else {
         bootbox.prompt({
             title: "Summary name",
-            inputType:'text',
+            inputType: 'text',
             callback: function (result) {
                 updateSummaryToServer(result);
             }
@@ -51,16 +47,16 @@ function saveSummary(){
     }
 }
 
-function updateSummaryToServer(summary_name){
+function updateSummaryToServer(summary_name) {
     //
-    if(summary_name===undefined || summary_name==='' || summary_name===null){
+    if (summary_name === undefined || summary_name === '' || summary_name === null) {
 
-    }else{
+    } else {
         // 检查是否有新的row
         summary_name = summary_name.toLocaleLowerCase();
         var extra_data = [];
-        for(var key in window.table_data){
-            if(key.search('_[0-9a-fA-F]{4}')!==-1){// 说明是用户加入的
+        for (var key in window.table_data) {
+            if (key.search('_[0-9a-fA-F]{4}') !== -1) {// 说明是用户加入的
                 extra_data.push(window.table_data[key]);// 可以优化下
             }
         }
@@ -74,39 +70,35 @@ function updateSummaryToServer(summary_name){
             data: JSON.stringify({
                 uuid: server_uuid,
                 summary: summary,
-                summary_name:summary_name
+                summary_name: summary_name
             }),
-            success: function(value){
-                if(value['status']==='success'){
+            success: function (value) {
+                if (value['status'] === 'success') {
                     window.CURRENT_SUMMARY_NAME = value['summary_name'];
                     success_prompt("Save summary successfully.");
-                }
-                else
+                } else
                     bootbox.alert(value['msg'])
             },
-            error: function(error){
+            error: function (error) {
                 bootbox.alert("Some error happens. Fail to save the summary.");
             }
         })
     }
 }
 
-function processSummaryData(column_dict)
-{
+function processSummaryData(column_dict) {
     // 将数据设置为居中，将一些内容设置为json类型
-    for (var key1 in column_dict)
-    {
+    for (var key1 in column_dict) {
         var v1 = column_dict[key1];
         v1['valign'] = 'middle';
         v1['align'] = 'center';
-        if ('field' in v1){
+        if ('field' in v1) {
             v1['class'] = 'word-wrap';
         }
-        for(var key in v1)
-        {
-            if(v1[key] === 'true')
+        for (var key in v1) {
+            if (v1[key] === 'true')
                 v1[key] = true;
-            if(v1[key] === 'false')
+            if (v1[key] === 'false')
                 v1[key] = false;
         }
         v1['escape'] = true;
@@ -115,7 +107,7 @@ function processSummaryData(column_dict)
     return column_dict;
 }
 
-function formTable(columns, table_data, reorderable){
+function formTable(columns, table_data, reorderable) {
     $('#tb_summary').bootstrapTable('destroy').bootstrapTable({
         // url: '/table/data',         //请求后台的URL（*）
         // method: 'get',                      //请求方式（*）
@@ -124,7 +116,7 @@ function formTable(columns, table_data, reorderable){
         striped: false,                      //是否显示行间隔色
         cache: true,                       //是否使用缓存，默认为true，所以一般情况下需要设置一下这个属性（*）
         pagination: false,                   //是否显示分页（*）
-        maintainSelected:true,              // 当操作时，保持selected的对象不改变
+        maintainSelected: true,              // 当操作时，保持selected的对象不改变
         sortable: true,                     //是否启用排序
         sortOrder: "desc",                   //排序方式
         sortName: 'id',                     //依照哪个标准排序
@@ -141,24 +133,24 @@ function formTable(columns, table_data, reorderable){
         showToggle: false,                    //是否显示详细视图和列表视图的切换按钮
         cardView: false,                    //是否显示详细视图
         detailView: true,                   //是否显示父子表
-        detailFormatter:detailFormatter,      // 点击detail后显示的方式
+        detailFormatter: detailFormatter,      // 点击detail后显示的方式
         showExport: true,                     //是否显示导出
         exportDataType: "basic",              //basic', 'all', 'selected'.
         exportTypes: ['json', 'csv', 'txt', 'excel'],
-        reorderableRows:reorderable,              //使用的话会导致无法选中copy
+        reorderableRows: reorderable,              //使用的话会导致无法选中copy
         undefinedText: '-',
         columns: columns,
         paginationVAlign: 'both',
-});
+    });
 }
 
 function detailFormatter(index, row) {
-    var html=[];
+    var html = [];
     var id = row['id'];
-    if(id in window.summary_sources){
+    if (id in window.summary_sources) {
         $.each(row, function (key, value) {
             // name
-            if(key in window.summary_sources[id]){
+            if (key in window.summary_sources[id]) {
                 var str = '<p><b>' + key + ':</b></p>';
                 str += '<p>Calculate from:' + window.summary_sources[id][key].length + ' logs.</p>';
                 str += '<p>They are: ' + JSON.stringify(window.summary_sources[id][key]) + '<\p>';
@@ -176,8 +168,10 @@ function add_checkbox(columns) {
     var max_depth = columns.length;
 
     //checkbox栏
-    columns[0].splice(0, 0, {'checkbox':true, 'rowspan':max_depth, 'title':'checkbox', 'field': 'checkbox','valign':'middle',
-                        'align':'center'});
+    columns[0].splice(0, 0, {
+        'checkbox': true, 'rowspan': max_depth, 'title': 'checkbox', 'field': 'checkbox', 'valign': 'middle',
+        'align': 'center'
+    });
     return columns;
 }
 

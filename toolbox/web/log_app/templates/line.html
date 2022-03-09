@@ -20,23 +20,23 @@
     <script src="/static/js/super-param-visualizer.js"></script>
 
     <script>
-        var column_order = JSON.parse('{{column_order|tojson}}'); // {"meta":{"fit_id": xxx, ...}, "metric": {...}, "OrderKeys:["meta", "metric"]"}
-        var column_dict = JSON.parse('{{column_dict|tojson}}'); // 二级nested的dict
+        const column_order = JSON.parse('{{column_order|tojson}}'); // {"meta":{"fit_id": xxx, ...}, "metric": {...}, "OrderKeys:["meta", "metric"]"}
+        const column_dict = JSON.parse('{{column_dict|tojson}}'); // 二级nested的dict
         var hidden_columns = JSON.parse('{{hidden_columns|tojson}}'); // 一级dict
-        var data = JSON.parse('{{data|tojson}}'); // {'log_2019_xx': {'id': xx, "hyper-lr":xxx, "metric-xxx-xxx":xx}}
+        const data = JSON.parse('{{data|tojson}}'); // {'log_2019_xx': {'id': xx, "hyper-lr":xxx, "metric-xxx-xxx":xx}}
 
         window.column_dict = column_dict;
         window.column_order = column_order;
         window.hidden_columns = hidden_columns;
-        window.settings = {'Hide hidden columns when reorder':false};
+        window.settings = {'Hide hidden columns when reorder': false};
 
         function refine_logs(data, columns) {
             // 根据columns的内容，从data中准备二维数组
-            var arr = [];
-            for(var id in data){
-                var log = data[id];
-                var _arr = [];
-                for(var i=0;i<columns.length;i++){
+            const arr = [];
+            for (const id in data) {
+                const log = data[id];
+                const _arr = [];
+                for (let i = 0; i < columns.length; i++) {
                     _arr.push(log[columns[i]]);
                 }
                 arr.push(_arr);
@@ -44,30 +44,30 @@
             return arr;
         }
 
-        function get_visible_columns(column_order, hidden_columns){
+        function get_visible_columns(column_order, hidden_columns) {
             // 生成[hyper-lr, hyper-xxx类似的值], 返回的是需要设置为柱子的column
-            var all_columns = flat_column_order(column_order);
-            var left_columns = [];
-            for(var i=0;i<all_columns.length;i++){
-                if(!(all_columns[i] in hidden_columns)){
+            const all_columns = flat_column_order(column_order);
+            const left_columns = [];
+            for (let i = 0; i < all_columns.length; i++) {
+                if (!(all_columns[i] in hidden_columns)) {
                     left_columns.push(all_columns[i])
                 }
             }
             return left_columns
         }
 
-        function flat_column_order(column_order, prefix){
+        function flat_column_order(column_order, prefix) {
             // 将column_order中的值按顺序吐出来
-            if(prefix===undefined){
+            if (prefix === undefined) {
                 prefix = '';
             }
-            var arr = [];
-            var keys = column_order['OrderKeys'];
-            for(var i=0;i<keys.length;i++){
-                var value = column_order[keys[i]];
-                if(value==='EndOfOrder'){
+            const arr = [];
+            const keys = column_order['OrderKeys'];
+            for (let i = 0; i < keys.length; i++) {
+                const value = column_order[keys[i]];
+                if (value === 'EndOfOrder') {
                     arr.push(prefix + keys[i]);
-                }else{
+                } else {
                     arr.push.apply(arr, flat_column_order(value, prefix + keys[i] + '-'))
                 }
             }
@@ -75,37 +75,38 @@
         }
 
         function show_modal_to_choose_columns() {
-               generate_sortable_columns(window.column_order, window.column_dict, window.hidden_columns,
-                   $("#columns_dialogue"));
-               var nestedSortables = [].slice.call(document.querySelectorAll('.nested-sortable'));
+            generate_sortable_columns(window.column_order, window.column_dict, window.hidden_columns,
+                $("#columns_dialogue"));
+            const nestedSortables = [].slice.call(document.querySelectorAll('.nested-sortable'));
 
-               col_sortables = [];
-               for (var i = 0; i < nestedSortables.length; i++) {
-                    col_sortables.push(new Sortable(nestedSortables[i], {
-                        group: {
-                            'name': nestedSortables[i].getAttribute('id'),
-                            'pull':false,
-                            'put':false},
-                        animation: 150,
-                        fallbackOnBody:true,
-                        swapThreshold:0.65,
-                        dataIdAttr: 'title'
-                    }));
-                }
-               //检查是否所有的checkbox都已经正确运行了
-                check_checkbox_valid($("#choose_column_nested"));
-
-                // 触发column的点击
-               $('input').change(function () {
-                  var $cb = $(this);
-                  if($cb[0].getAttribute('id')==='choose_column_checkbox') {
-                      var $group_item = $cb.closest('.list-group-item');
-                      var state = $cb.prop('checked');
-                      change_children_state($group_item, state);
-                      change_parent_state($group_item, state);
-                  }
-               });
+            col_sortables = [];
+            for (let i = 0; i < nestedSortables.length; i++) {
+                col_sortables.push(new Sortable(nestedSortables[i], {
+                    group: {
+                        'name': nestedSortables[i].getAttribute('id'),
+                        'pull': false,
+                        'put': false
+                    },
+                    animation: 150,
+                    fallbackOnBody: true,
+                    swapThreshold: 0.65,
+                    dataIdAttr: 'title'
+                }));
             }
+            //检查是否所有的checkbox都已经正确运行了
+            check_checkbox_valid($("#choose_column_nested"));
+
+            // 触发column的点击
+            $('input').change(function () {
+                var $cb = $(this);
+                if ($cb[0].getAttribute('id') === 'choose_column_checkbox') {
+                    var $group_item = $cb.closest('.list-group-item');
+                    var state = $cb.prop('checked');
+                    change_children_state($group_item, state);
+                    change_parent_state($group_item, state);
+                }
+            });
+        }
 
         $(function () {
             show_lines();
@@ -159,61 +160,58 @@
         updateLog();
     });
 
-    var $choose_columns = $('#choose_columns');
-    var $confirm_columns = $('#confirm_columns');
+    const $choose_columns = $('#choose_columns');
+    const $confirm_columns = $('#confirm_columns');
 
-    function show_lines(){
-           var left_columns = get_visible_columns(window.column_order, window.hidden_columns);
-           if(left_columns.length<2){
-               bootbox.alert("You have to choose at two lines.");
-               return false;
-           }else{
-               var arr = refine_logs(data, left_columns);
-           }
-           // TODO 加上canvas
-           superParamVisual.update({'data':arr, 'columns':left_columns}).then(() => {
-                updateLog();
-            });
-           return true;
+    function show_lines() {
+        const left_columns = get_visible_columns(window.column_order, window.hidden_columns);
+        if (left_columns.length < 2) {
+            bootbox.alert("You have to choose at two lines.");
+            return false;
+        } else {
+            var arr = refine_logs(data, left_columns);
+        }
+        // TODO 加上canvas
+        superParamVisual.update({'data': arr, 'columns': left_columns}).then(() => {
+            updateLog();
+        });
+        return true;
     }
 
     //点击reorder columns.
     $choose_columns.click(show_modal_to_choose_columns);
-   // 确认选择columns
-   $confirm_columns.click(function () {
-       var $nested = $("#choose_column_nested");
-       var new_column_order = get_new_column_order($nested, window.column_order);
-       var new_hidden_columns = window.hidden_columns;
-       get_new_hidden_columns($nested, new_hidden_columns, '');
+    // 确认选择columns
+    $confirm_columns.click(function () {
+        const $nested = $("#choose_column_nested");
+        const new_column_order = get_new_column_order($nested, window.column_order);
+        const new_hidden_columns = window.hidden_columns;
+        get_new_hidden_columns($nested, new_hidden_columns, '');
 
-       // 更新columns
-       if(window.column_order_updated) {
-           window.column_order = new_column_order;
-       }
-       if(window.hidden_columns_updated){
-           window.hidden_columns = new_hidden_columns;
-       }
+        // 更新columns
+        if (window.column_order_updated) {
+            window.column_order = new_column_order;
+        }
+        if (window.hidden_columns_updated) {
+            window.hidden_columns = new_hidden_columns;
+        }
 
-       if(window.column_order_updated || window.hidden_columns_updated){
-           if(!show_lines()){
-               return;
-           }
-       }
+        if (window.column_order_updated || window.hidden_columns_updated) {
+            if (!show_lines()) {
+                return;
+            }
+        }
 
-       $("#columns_box").modal('hide');
+        $("#columns_box").modal('hide');
 
-       for(var i=0;i<col_sortables.length;i++)
-       {
-           var sortable = col_sortables.pop();
-           sortable.destroy();
-       }
+        for (var i = 0; i < col_sortables.length; i++) {
+            var sortable = col_sortables.pop();
+            sortable.destroy();
+        }
 
     });
     $("#columns_box").on('hide.bs.modal', function (e) {
-       $("#columns_dialogue").empty();
+        $("#columns_dialogue").empty();
     });
-
-
 
 
 </script>

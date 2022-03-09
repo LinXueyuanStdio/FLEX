@@ -17,8 +17,8 @@ from .app import start_app
 
 
 def create_settings(preference_dir_of_log_app="output"):
-    pj_path = os.path.realpath('.')
-    tools_path = os.path.realpath(__file__)[:-len("main.py")]
+    pj_path = os.path.realpath('.')  # user project path
+    tools_path = os.path.realpath(__file__)[:-len("main.py")]  # installed pkg path
     if not os.path.isdir(os.path.join(pj_path, preference_dir_of_log_app)):
         shutil.copytree(os.path.join(tools_path, "output"), os.path.join(pj_path, preference_dir_of_log_app))
     elif not os.path.exists(os.path.join(pj_path, preference_dir_of_log_app, "default.cfg")):
