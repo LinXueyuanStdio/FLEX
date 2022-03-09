@@ -34,7 +34,7 @@ def convert_to_logic(x):
 
 def convert_to_feature(x):
     # [-1, 1]
-    y = torch.tanh(x) * -1
+    y = torch.tanh(x) * 1/2
     return y
 
 
@@ -55,10 +55,8 @@ class Projection(nn.Module):
 
     def forward(self, q_feature, q_logic, r_feature, r_logic):
         x = torch.cat([q_feature + r_feature, q_logic + r_logic], dim=-1)
-        x = self.dropout(x)
         for nl in range(1, self.num_layers + 1):
             x = F.relu(getattr(self, "layer{}".format(nl))(x))
-            x = self.dropout(x)
         x = self.layer0(x)
 
         feature, logic = torch.chunk(x, 2, dim=-1)
@@ -84,8 +82,8 @@ class Intersection(nn.Module):
         feature_attention = F.softmax(self.feature_layer_2(F.relu(self.feature_layer_1(logits))), dim=0)
         feature = torch.sum(feature_attention * feature, dim=0)
 
-        logic, _ = torch.min(logic, dim=0)
-        # logic = torch.prod(logic, dim=0)
+        # logic, _ = torch.min(logic, dim=0)
+        logic = torch.prod(logic, dim=0)
         return feature, logic
 
 
