@@ -615,23 +615,25 @@
             update_hidden_columns(new_hidden_columns);
         }
 
-        if (window.column_order_updated || window.hidden_columns_updated)
+        if (window.column_order_updated || window.hidden_columns_updated) {
             initalizeTable();
+        }
         window.column_order_updated = false;
         window.hidden_columns_updated = false;
 
-        for (var i = 0; i < col_sortables.length; i++) {
-            var sortable = col_sortables.pop();
+        for (let i = 0; i < col_sortables.length; i++) {
+            const sortable = col_sortables.pop();
             sortable.destroy();
         }
     });
 
     function add_calculate_stats_to_table(method) {
-        var row = {};
+        let value;
+        const row = {};
         row['id'] = 'stats_avg_' + generate_uuid();
-        var metric_names = getJsonKeys(window.row_stats['stats']); // metric_names就是metric的名称; 每个metric对应着自己的值
-        for (var index = 0; index < metric_names.length; index++) {
-            var value = window.row_stats['stats'][metric_names[index]];
+        const metric_names = getJsonKeys(window.row_stats['stats']); // metric_names就是metric的名称; 每个metric对应着自己的值
+        for (let index = 0; index < metric_names.length; index++) {
+            value = window.row_stats['stats'][metric_names[index]];
             if (!(method in value)) {
                 bootbox.alert(method + " value is not found for " + metric_names[index] + '.');
                 $('#stats_box').modal('hide');
@@ -639,8 +641,8 @@
             } else
                 row[metric_names[index]] = value[method];
         }
-        for (var key in window.row_stats['invariant_values']) {
-            var value = window.row_stats['invariant_values'][key];
+        for (const key in window.row_stats['invariant_values']) {
+            value = window.row_stats['invariant_values'][key];
             row[key] = value;
         }
 
@@ -864,8 +866,9 @@
                 uuid: window.server_uuid
             }),
             success: function (value) {
-                var status = value['status'];
-                var msg = value['msg'];
+                let index;
+                const status = value['status'];
+                const msg = value['msg'];
                 if (status === 'success') {
                     if (value['new_logs'].length === 0 && value['updated_logs'].length === 0) {
                         success_prompt(msg, 2000);
@@ -874,12 +877,12 @@
                         updated_logs = value['updated_logs'];
                         if (new_logs.length > 0) {
                             $('#tb_departments').bootstrapTable('prepend', new_logs);
-                            for (var index = 0; index < new_logs.length; index++) {
+                            for (index = 0; index < new_logs.length; index++) {
                                 window.table_data[new_logs[index]['id']] = new_logs[index];
                             }
                         }
                         if (updated_logs.length > 0) {
-                            for (var index = 0; index < updated_logs.length; index++) {
+                            for (index = 0; index < updated_logs.length; index++) {
                                 $('#tb_departments').bootstrapTable('updateByUniqueId', {
                                     id: updated_logs[index]['id'],
                                     row: updated_logs[index]
