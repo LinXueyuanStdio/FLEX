@@ -34,7 +34,7 @@ def convert_to_logic(x):
 
 def convert_to_feature(x):
     # [-1, 1]
-    y = torch.tanh(x) * 1/2
+    y = torch.tanh(2 * x) * 1
     return y
 
 
