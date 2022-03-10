@@ -812,10 +812,10 @@
 
     //点击clear check
     $('#clearCheck').click(function () {
-        var checkedRows = $table.bootstrapTable('getSelections');
+        const checkedRows = $table.bootstrapTable('getSelections');
         if (checkedRows.length > 0) {
-            var checkedRowIds = [];
-            for (var index = 0; index < checkedRows.length; index++) {
+            const checkedRowIds = [];
+            for (let index = 0; index < checkedRows.length; index++) {
                 checkedRowIds.push(checkedRows[index]['id']);
             }
             $table.bootstrapTable('uncheckBy', {'field': 'id', 'values': checkedRowIds});

@@ -1,6 +1,6 @@
 function add_operate_checkbox(columns) {
     //将columns增加一个operate栏与checkbox栏
-    var max_depth = columns.length;
+    const max_depth = columns.length;
 
     columns[0].push({
         field: 'operate', title: 'action',
@@ -10,7 +10,11 @@ function add_operate_checkbox(columns) {
     });
     //checkbox栏
     columns[0].splice(0, 0, {
-        'checkbox': true, 'rowspan': max_depth, 'title': 'checkbox', 'field': 'checkbox', 'valign': 'middle',
+        'checkbox': true,
+        'rowspan': max_depth,
+        'title': 'checkbox',
+        'field': 'checkbox',
+        'valign': 'middle',
         'align': 'center'
     });
     return columns;
@@ -160,7 +164,7 @@ function operateFormatter(value, row, index) {
 
 
 function initalizeTable() {
-    var columns = convert_to_columns(window.column_order, window.column_dict,
+    let columns = convert_to_columns(window.column_order, window.column_dict,
         window.hidden_columns);
 
     if (window.settings['Wrap display']) {
@@ -171,7 +175,7 @@ function initalizeTable() {
 
     //将operate和checkbox加入
     add_operate_checkbox(columns);
-    var filterControl = false;
+    let filterControl = false;
     columns.forEach(function (value, i) {
         value.forEach(function (v, i) {
             if ("filterControl" in v) {
@@ -180,8 +184,8 @@ function initalizeTable() {
         })
     });
 
-    var data = [];
-    for (var key in window.table_data) {
+    const data = [];
+    for (const key in window.table_data) {
         data.push(window.table_data[key]);
     }
 
@@ -197,35 +201,28 @@ function initalizeTable() {
     }
 
     // 在toggle新增加一个add row的操作
-    var new_button;
-    new_button = generate_a_button("btn btn-default", 'add', 'Add row', AddRowModal,
-        '<i class="glyphicon glyphicon-plus"></i>');
+    let new_button;
+    new_button = generate_a_button("btn btn-default", 'add', 'Add row', AddRowModal, '<i class="glyphicon glyphicon-plus"></i>');
     new_button.setAttribute('data-toggle', 'modal');
     new_button.setAttribute('data-target', '#row_box');
     document.getElementsByClassName('columns').item(0).appendChild(new_button);
     // 保存配置
-    new_button = generate_a_button("btn btn-default", 'save', 'Save', save_filter_conditions,
-        '<i class="glyphicon glyphicon-floppy-save   "></i>');
+    new_button = generate_a_button("btn btn-default", 'save', 'Save', save_filter_conditions, '<i class="glyphicon glyphicon-floppy-save   "></i>');
     document.getElementsByClassName('columns').item(0).appendChild(new_button);
     // 显示所有的config_name
-    new_button = generate_a_button("btn btn-default", 'config', 'Configs', change_config,
-        '<i class="glyphicon glyphicon-file"></i>');
+    new_button = generate_a_button("btn btn-default", 'config', 'Configs', change_config, '<i class="glyphicon glyphicon-file"></i>');
     document.getElementsByClassName('columns').item(0).appendChild(new_button);
     //显示选中的row的statics
-    new_button = generate_a_button("btn btn-default", 'statistics', 'Stats', show_statistics,
-        '<i class="glyphicon glyphicon-stats"></i>');
+    new_button = generate_a_button("btn btn-default", 'statistics', 'Stats', show_statistics, '<i class="glyphicon glyphicon-stats"></i>');
     document.getElementsByClassName('columns').item(0).appendChild(new_button);
     // 在toggle新增一个对比log曲线的按钮
-    new_button = generate_a_button("btn btn-default", 'Compare', 'Compare', CompareLogTrend,
-        '<i class="glyphicon glyphicon-random"></i>');
+    new_button = generate_a_button("btn btn-default", 'Compare', 'Compare', CompareLogTrend, '<i class="glyphicon glyphicon-random"></i>');
     document.getElementsByClassName('columns').item(0).appendChild(new_button);
     //显示summary
-    new_button = generate_a_button('btn btn-default', 'summary', 'Summary', jump_to_summary,
-        '<i class="glyphicon glyphicon-usd"></i>');
+    new_button = generate_a_button('btn btn-default', 'summary', 'Summary', jump_to_summary, '<i class="glyphicon glyphicon-usd"></i>');
     document.getElementsByClassName('columns').item(0).appendChild(new_button);
     // 在toggle新增一个poweroff的按钮
-    new_button = generate_a_button("btn btn-default", 'Poweroff', 'PoweOff', ShutDownServer,
-        '<i class="glyphicon glyphicon-off"></i>');
+    new_button = generate_a_button("btn btn-default", 'Poweroff', 'PoweOff', ShutDownServer, '<i class="glyphicon glyphicon-off"></i>');
     document.getElementsByClassName('columns').item(0).appendChild(new_button);
 }
 
@@ -241,7 +238,7 @@ function generate_a_button(className, name, title, onclick, innerHTML) {
 }
 
 function CompareLogTrend() {
-    var ids = getIdSelections();
+    const ids = getIdSelections();
     if (ids.length < 2) {
         bootbox.alert("You have not chosen enough logs (at least 2).")
     } else if (ids.length > window.max_compare_metrics) {

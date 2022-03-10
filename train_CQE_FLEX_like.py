@@ -2,7 +2,7 @@
 @author: lxy
 @email: linxy59@mail2.sysu.edu.cn
 @date: 2021/10/26
-@description: 整理模型，重构代码，加了注释
+@description: null
 """
 from __future__ import absolute_import
 from __future__ import division
@@ -39,13 +39,12 @@ def convert_to_feature(x):
 
 
 class Projection(nn.Module):
-    def __init__(self, dim, hidden_dim=1600, num_layers=2, drop=0.1):
+    def __init__(self, dim, hidden_dim=1600, num_layers=2):
         super(Projection, self).__init__()
         self.entity_dim = dim
         self.relation_dim = dim
         self.hidden_dim = hidden_dim
         self.num_layers = num_layers
-        self.dropout = nn.Dropout(drop)
         self.layer1 = nn.Linear(self.entity_dim + self.relation_dim, self.hidden_dim)
         self.layer0 = nn.Linear(self.hidden_dim, self.entity_dim + self.relation_dim)
         for nl in range(2, num_layers + 1):
@@ -66,23 +65,34 @@ class Projection(nn.Module):
 
 
 class Intersection(nn.Module):
-    def __init__(self, dim):
+    def __init__(self, dim, drop=0.1):
         super(Intersection, self).__init__()
         self.dim = dim
         self.feature_layer_1 = nn.Linear(self.dim * 2, self.dim)
         self.feature_layer_2 = nn.Linear(self.dim, self.dim)
+        self.logic_layer_1 = nn.Linear(self.dim * 2, self.dim)
+        self.logic_layer_2 = nn.Linear(self.dim, self.dim)
+        self.drop = nn.Dropout(p=drop)
 
         nn.init.xavier_uniform_(self.feature_layer_1.weight)
         nn.init.xavier_uniform_(self.feature_layer_2.weight)
+        nn.init.xavier_uniform_(self.logic_layer_1.weight)
+        nn.init.xavier_uniform_(self.logic_layer_2.weight)
 
     def forward(self, feature, logic):
         # feature: N x B x d
-        # logic:   N x B x d
+        # logic:  N x B x d
         logits = torch.cat([feature, logic], dim=-1)  # N x B x 2d
         feature_attention = F.softmax(self.feature_layer_2(F.relu(self.feature_layer_1(logits))), dim=0)
         feature = torch.sum(feature_attention * feature, dim=0)
 
+        arg_layer1_act = F.relu(self.logic_layer_1(logits))
+        arg_layer1_mean = torch.mean(arg_layer1_act, dim=0)
+        gate = torch.sigmoid(self.logic_layer_2(arg_layer1_mean))
+
+        logic = self.drop(logic)
         logic, _ = torch.min(logic, dim=0)
+        logic = logic * gate
         # logic = torch.prod(logic, dim=0)
         return feature, logic
 
@@ -119,11 +129,11 @@ class FLEX(nn.Module):
         self.relation_dim = hidden_dim
 
         # entity only have feature part but no logic part
-        self.entity_feature_embedding = nn.Embedding(nentity, self.entity_dim)
-        self.relation_feature_embedding = nn.Embedding(nrelation, self.relation_dim)
-        self.relation_logic_embedding = nn.Embedding(nrelation, self.relation_dim)
-        self.projection = Projection(self.entity_dim, drop=drop)
-        self.intersection = Intersection(self.entity_dim)
+        self.entity_feature_embedding = nn.Parameter(torch.zeros(nentity, self.entity_dim), requires_grad=True)
+        self.relation_feature_embedding = nn.Parameter(torch.zeros(nrelation, self.relation_dim), requires_grad=True)
+        self.relation_logic_embedding = nn.Parameter(torch.zeros(nrelation, self.relation_dim), requires_grad=True)
+        self.projection = Projection(self.entity_dim)
+        self.intersection = Intersection(self.entity_dim, drop)
         self.negation = Negation()
 
         self.query_name_dict = query_name_dict
@@ -137,13 +147,14 @@ class FLEX(nn.Module):
 
     def init(self):
         embedding_range = self.embedding_range.item()
-        nn.init.uniform_(tensor=self.entity_feature_embedding.weight.data, a=-embedding_range, b=embedding_range)
-        nn.init.uniform_(tensor=self.relation_feature_embedding.weight.data, a=-embedding_range, b=embedding_range)
-        nn.init.uniform_(tensor=self.relation_logic_embedding.weight.data, a=-embedding_range, b=embedding_range)
+        nn.init.uniform_(tensor=self.entity_feature_embedding, a=-embedding_range, b=embedding_range)
+        nn.init.uniform_(tensor=self.relation_feature_embedding, a=-embedding_range, b=embedding_range)
+        nn.init.uniform_(tensor=self.relation_logic_embedding, a=-embedding_range, b=embedding_range)
 
     def scale(self, embedding):
         return embedding / self.embedding_range
 
+    # implement formatting forward method
     def forward(self, positive_sample, negative_sample, subsampling_weight, batch_queries_dict, batch_idxs_dict):
         return self.forward_FLEX(positive_sample, negative_sample, subsampling_weight, batch_queries_dict, batch_idxs_dict)
 
@@ -171,11 +182,13 @@ class FLEX(nn.Module):
                 all_logic.append(logic)
 
         if len(all_feature) > 0:
-            all_feature = torch.cat(all_feature, dim=0)  # (B, d)
-            all_logic = torch.cat(all_logic, dim=0)  # (B, d)
+            all_feature = torch.cat(all_feature, dim=0).unsqueeze(1)  # (B, 1, d)
+            all_logic = torch.cat(all_logic, dim=0).unsqueeze(1)  # (B, 1, d)
         if len(all_union_feature) > 0:
-            all_union_feature = torch.cat(all_union_feature, dim=0)  # (2B, d)
-            all_union_logic = torch.cat(all_union_logic, dim=0)  # (2B, d)
+            all_union_feature = torch.cat(all_union_feature, dim=0).unsqueeze(1)  # (2B, 1, d)
+            all_union_logic = torch.cat(all_union_logic, dim=0).unsqueeze(1)  # (2B, 1, d)
+            all_union_feature = all_union_feature.view(all_union_feature.shape[0] // 2, 2, 1, -1)  # (B, 2, 1, d)
+            all_union_logic = all_union_logic.view(all_union_logic.shape[0] // 2, 2, 1, -1)
         if type(subsampling_weight) != type(None):
             subsampling_weight = subsampling_weight[all_idxs + all_union_idxs]
 
@@ -184,179 +197,73 @@ class FLEX(nn.Module):
             # 2.1 计算 一般的查询
             if len(all_feature) > 0:
                 # positive samples for non-union queries in this batch
-                positive_sample_regular = positive_sample[all_idxs]  # (B,)
-                positive_feature = self.entity_feature(positive_sample_regular).unsqueeze(1)  # (B, 1, d)
-                positive_scores = self.scoring_all(positive_feature, all_feature, all_logic)
+                positive_sample_regular = positive_sample[all_idxs]
+
+                positive_feature = torch.index_select(self.entity_feature_embedding, dim=0, index=positive_sample_regular).unsqueeze(1)
+                positive_feature = self.scale(positive_feature)
+                positive_feature = convert_to_feature(positive_feature)
+
+                positive_logit = self.cal_logit(positive_feature, all_feature, all_logic)
             else:
-                positive_scores = torch.Tensor([]).to(self.embedding_range.device)
+                positive_logit = torch.Tensor([]).to(self.entity_feature_embedding.device)
 
             # 2.1 计算 并查询
             if len(all_union_feature) > 0:
                 # positive samples for union queries in this batch
-                positive_sample_union = positive_sample[all_union_idxs]  # (B,)
-                positive_feature = self.entity_feature(positive_sample_union).unsqueeze(1)  # (B, 1, d)
-                positive_union_scores = self.scoring_all(positive_feature, all_union_feature, all_union_logic)
+                positive_sample_union = positive_sample[all_union_idxs]
 
-                batch_size = positive_union_scores.shape[0] // 2
-                positive_union_scores = positive_union_scores.view(batch_size, 2, -1)
-                positive_union_scores = torch.max(positive_union_scores, dim=1)[0]
-                positive_union_scores = positive_union_scores.view(batch_size, -1)
+                positive_feature = torch.index_select(self.entity_feature_embedding, dim=0, index=positive_sample_union).unsqueeze(1).unsqueeze(1)
+                positive_feature = self.scale(positive_feature)
+                positive_feature = convert_to_feature(positive_feature)
+
+                positive_union_logit = self.cal_logit(positive_feature, all_union_feature, all_union_logic)
+                positive_union_logit = torch.max(positive_union_logit, dim=1)[0]
             else:
-                positive_union_scores = torch.Tensor([]).to(self.embedding_range.device)
-            positive_scores = torch.cat([positive_scores, positive_union_scores], dim=0)
+                positive_union_logit = torch.Tensor([]).to(self.entity_feature_embedding.device)
+            positive_logit = torch.cat([positive_logit, positive_union_logit], dim=0)
         else:
-            positive_scores = None
+            positive_logit = None
 
         # 3. 计算负例损失
         if type(negative_sample) != type(None):
             # 3.1 计算 一般的查询
             if len(all_feature) > 0:
-                negative_sample_regular = negative_sample[all_idxs]  # (B, N)
-                negative_feature = self.entity_feature(negative_sample_regular)  # (B, N, d)
-                negative_scores = self.scoring_all(negative_feature, all_feature, all_logic)
+                negative_sample_regular = negative_sample[all_idxs]
+                batch_size, negative_size = negative_sample_regular.shape
+
+                negative_feature = torch.index_select(self.entity_feature_embedding, dim=0, index=negative_sample_regular.view(-1)).view(batch_size, negative_size, -1)
+                negative_feature = self.scale(negative_feature)
+                negative_feature = convert_to_feature(negative_feature)
+
+                negative_logit = self.cal_logit(negative_feature, all_feature, all_logic)
             else:
-                negative_scores = torch.Tensor([]).to(self.embedding_range.device)
+                negative_logit = torch.Tensor([]).to(self.entity_feature_embedding.device)
 
             # 3.1 计算 并查询
             if len(all_union_feature) > 0:
-                negative_sample_union = negative_sample[all_union_idxs]  # (B, N)
-                negative_feature = self.entity_feature(negative_sample_union).unsqueeze(1)  # (B, 1, N, d)
-                batch_size = all_union_feature.shape[0] // 2
-                all_union_feature = all_union_feature.view(batch_size, 2, 1, -1)
-                all_union_logic = all_union_logic.view(batch_size, 2, 1, -1)
-                negative_union_scores = self.scoring_all(negative_feature, all_union_feature, all_union_logic)
+                negative_sample_union = negative_sample[all_union_idxs]
+                batch_size, negative_size = negative_sample_union.shape
 
-                negative_union_scores = negative_union_scores.view(batch_size, 2, -1)
-                negative_union_scores = torch.max(negative_union_scores, dim=1)[0]
-                negative_union_scores = negative_union_scores.view(batch_size, -1)
+                negative_feature = torch.index_select(self.entity_feature_embedding, dim=0, index=negative_sample_union.view(-1)).view(batch_size, 1, negative_size, -1)
+                negative_feature = self.scale(negative_feature)
+                negative_feature = convert_to_feature(negative_feature)
+
+                negative_union_logit = self.cal_logit(negative_feature, all_union_feature, all_union_logic)
+                negative_union_logit = torch.max(negative_union_logit, dim=1)[0]
             else:
-                negative_union_scores = torch.Tensor([]).to(self.embedding_range.device)
-            negative_scores = torch.cat([negative_scores, negative_union_scores], dim=0)
+                negative_union_logit = torch.Tensor([]).to(self.entity_feature_embedding.device)
+            negative_logit = torch.cat([negative_logit, negative_union_logit], dim=0)
         else:
-            negative_scores = None
+            negative_logit = None
 
-        return positive_scores, negative_scores, subsampling_weight, all_idxs + all_union_idxs
-
-    def entity_feature(self, sample_ids):
-        entity_feature = self.entity_feature_embedding(sample_ids)
-        entity_feature = self.scale(entity_feature)
-        entity_feature = convert_to_feature(entity_feature)
-        return entity_feature
-
-    def single_forward(self, query_structure: QueryStructure, queries: torch.Tensor, positive_sample: torch.Tensor, negative_sample: torch.Tensor):
-        feature, logic, _ = self.embed_query(queries, query_structure, 0)
-        positive_score = self.scoring_all(self.entity_feature(positive_sample), feature, logic)
-        negative_score = self.scoring_all(self.entity_feature(negative_sample), feature, logic)
-        return positive_score, negative_score
-
-    def batch_forward(self, batch_queries_dict: Dict[QueryStructure, torch.Tensor], batch_idxs_dict: Dict[QueryStructure, List[List[int]]]):
-        # 1. 用 batch_queries_dict 将查询嵌入（编码后的状态）
-        all_idxs, all_feature, all_logic = [], [], []
-        all_union_idxs, all_union_feature, all_union_logic = [], [], []
-        for query_structure in batch_queries_dict:
-            # 用字典重新组织了嵌入，一个批次(BxL)只对应一种结构
-            if 'u' in self.query_name_dict[query_structure] and 'DNF' in self.query_name_dict[query_structure]:
-                feature, logic, _ = self.embed_query(self.transform_union_query(batch_queries_dict[query_structure], query_structure),
-                                                     self.transform_union_structure(query_structure),
-                                                     0)
-                all_union_idxs.extend(batch_idxs_dict[query_structure])
-                all_union_feature.append(feature)
-                all_union_logic.append(logic)
-            else:
-                feature, logic, _ = self.embed_query(batch_queries_dict[query_structure],
-                                                     query_structure,
-                                                     0)
-                all_idxs.extend(batch_idxs_dict[query_structure])
-                all_feature.append(feature)
-                all_logic.append(logic)
-
-        if len(all_feature) > 0:
-            all_feature = torch.cat(all_feature, dim=0)  # (B, d)
-            all_logic = torch.cat(all_logic, dim=0)  # (B, d)
-        if len(all_union_feature) > 0:
-            all_union_feature = torch.cat(all_union_feature, dim=0)  # (2B, d)
-            all_union_logic = torch.cat(all_union_logic, dim=0)  # (2B, d)
-
-        # 1. 计算 一般的查询
-        if len(all_feature) > 0:
-            entity_feature = self.entity_feature_embedding.weight.unsqueeze(dim=0).repeat(all_feature.shape[0], 1, 1)  # (B, E, d)
-            entity_feature = self.scale(entity_feature)
-            entity_feature = convert_to_feature(entity_feature)
-            negative_scores = self.scoring_all(entity_feature, all_feature, all_logic)
-        else:
-            negative_scores = torch.Tensor([]).to(feature.device)
-
-        # 2. 计算 并查询
-        if len(all_union_feature) > 0:
-            entity_feature = self.entity_feature_embedding.weight.unsqueeze(dim=0).repeat(all_union_feature.shape[0], 1, 1)  # (2B, E, d)
-            entity_feature = self.scale(entity_feature)
-            entity_feature = convert_to_feature(entity_feature)
-            negative_union_scores = self.scoring_all(entity_feature, all_union_feature, all_union_logic)
-
-            batch_size = negative_union_scores.shape[0] // 2
-            negative_union_scores = negative_union_scores.view(batch_size, 2, -1)
-            negative_union_scores = torch.max(negative_union_scores, dim=1)[0]
-            negative_union_scores = negative_union_scores.view(batch_size, -1)
-        else:
-            negative_union_scores = torch.Tensor([]).to(feature.device)
-        negative_scores = torch.cat([negative_scores, negative_union_scores], dim=0)
-
-        return negative_scores, all_idxs + all_union_idxs
-
-    def distance(self, entity_feature, query_feature, query_logic):
-        """
-        entity_feature (B, E, d)
-        query_feature  (B, 1, d)
-        query_logic    (B, 1, d)
-        query    =                 [(feature - logic) | feature | (feature + logic)]
-        entity   = entity_feature            |             |               |
-                         |                   |             |               |
-        1) from entity to center of the interval           |               |
-        d_center = entity_feature -                     feature            |
-                         |<------------------------------->|               |
-        2) from entity to left of the interval                             |
-        d_left   = entity_feature - (feature - logic)                      |
-                         |<----------------->|                             |
-        3) from entity to right of the interval                            |
-        d_right  = entity_feature -                               (feature + logic)
-                         |<----------------------------------------------->|
-        """
-        d_center = entity_feature - query_feature
-        d_left = entity_feature - (query_feature - query_logic)
-        d_right = entity_feature - (query_feature + query_logic)
-
-        # inner distance
-        feature_distance = torch.abs(d_center)
-        inner_distance = torch.min(feature_distance, query_logic)
-        # outer distance
-        outer_distance = torch.min(torch.abs(d_left), torch.abs(d_right))
-        outer_distance[feature_distance < query_logic] = 0.  # if entity is inside, we don't care about outer.
-
-        distance = torch.norm(outer_distance, p=1, dim=-1) + self.cen * torch.norm(inner_distance, p=1, dim=-1)
-        return distance
-
-    def scoring(self, entity_feature, query_feature, query_logic):
-        distance = self.distance(entity_feature, query_feature, query_logic)
-        score = self.gamma - distance * self.modulus
-        return score
-
-    def scoring_all(self, entity_feature, query_feature, query_logic):
-        """
-        entity_feature (B, E, d)
-        feature        (B, d)
-        logic          (B, d)
-        """
-        query_feature = query_feature.unsqueeze(dim=1)  # (B, 1, d)
-        query_logic = query_logic.unsqueeze(dim=1)  # (B, 1, d)
-        x = self.scoring(entity_feature, query_feature, query_logic)  # (B, E)
-        return x
+        return positive_logit, negative_logit, subsampling_weight, all_idxs + all_union_idxs
 
     def embed_query(self, queries: torch.Tensor, query_structure, idx: int):
         """
         迭代嵌入
         例子：(('e', ('r',)), ('e', ('r',)), ('e', ('r', 'n'))): '3in'
         B = 2, queries=[[1]]
-        Iterative embed a batch of queries with same structure
+        Iterative embed a batch of queries with same structure using BetaE
         queries:(B, L): a flattened batch of queries (all queries are of query_structure), B is batch size, L is length of queries
         """
         all_relation_flag = True
@@ -377,7 +284,10 @@ class FLEX(nn.Module):
             # 所以对 query_structure 的索引只有 0 (左) 和 -1 (右)
             if query_structure[0] == 'e':
                 # 嵌入实体
-                feature_entity_embedding = self.entity_feature(queries[:, idx])
+                feature_entity_embedding = torch.index_select(self.entity_feature_embedding, dim=0, index=queries[:, idx])
+                feature_entity_embedding = self.scale(feature_entity_embedding)
+                feature_entity_embedding = convert_to_feature(feature_entity_embedding)
+
                 logic_entity_embedding = torch.zeros_like(feature_entity_embedding).to(feature_entity_embedding.device)
 
                 idx += 1
@@ -396,13 +306,13 @@ class FLEX(nn.Module):
 
                 # projection
                 else:
-                    r_feature = self.relation_feature_embedding(queries[:, idx])
+                    r_feature = torch.index_select(self.relation_feature_embedding, dim=0, index=queries[:, idx])
                     r_feature = self.scale(r_feature)
                     r_feature = convert_to_feature(r_feature)
 
-                    r_logic = self.relation_logic_embedding(queries[:, idx])
+                    r_logic = torch.index_select(self.relation_logic_embedding, dim=0, index=queries[:, idx])
                     r_logic = self.scale(r_logic)
-                    r_logic = convert_to_logic(r_logic)
+                    r_logic = convert_to_feature(r_logic)
 
                     q_feature, q_logic = self.projection(q_feature, q_logic, r_feature, r_logic)
                 idx += 1
@@ -429,6 +339,28 @@ class FLEX(nn.Module):
             q_feature, q_logic = self.intersection(stacked_feature, stacked_logic)
 
         return q_feature, q_logic, idx
+
+    # implement distance function
+    def distance(self, entity_feature, query_feature, query_logic):
+        # inner distance 这里 sin(x) 近似为 L1 范数
+        distance2feature = torch.abs(entity_feature - query_feature)
+        distance_base = torch.abs(query_logic)
+        distance_in = torch.min(distance2feature, distance_base)
+
+        # outer distance
+        delta1 = entity_feature - (query_feature - query_logic)
+        delta2 = entity_feature - (query_feature + query_logic)
+        indicator_in = distance2feature < distance_base
+        distance_out = torch.min(torch.abs(delta1), torch.abs(delta2))
+        distance_out[indicator_in] = 0.
+
+        distance = torch.norm(distance_out, p=1, dim=-1) + self.cen * torch.norm(distance_in, p=1, dim=-1)
+        return distance
+
+    def cal_logit(self, entity_feature, query_feature, query_logic):
+        distance_1 = self.distance(entity_feature, query_feature, query_logic)
+        logit = self.gamma - distance_1 * self.modulus
+        return logit
 
     def transform_union_query(self, queries, query_structure: QueryStructure):
         """
@@ -695,8 +627,9 @@ class MyExperiment(Experiment):
                 batch_idxs_dict[query_structures[i]].append(i)
             for query_structure in batch_queries_dict:
                 batch_queries_dict[query_structure] = torch.LongTensor(batch_queries_dict[query_structure]).to(device)
+            negative_sample = negative_sample.to(device)
 
-            negative_logit, idxs = model.batch_forward(batch_queries_dict, batch_idxs_dict)
+            _, negative_logit, _, idxs = model(None, negative_sample, None, batch_queries_dict, batch_idxs_dict)
             queries_unflatten = [queries_unflatten[i] for i in idxs]
             query_structures = [query_structures[i] for i in idxs]
             argsort = torch.argsort(negative_logit, dim=1, descending=True)
