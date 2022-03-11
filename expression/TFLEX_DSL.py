@@ -8,8 +8,13 @@ import inspect
 import random
 from typing import List, Set, Dict, Union
 
-from .ParamSchema import Placeholder, BatchSamplingQuery, get_param_name_list, get_placeholder_list
+from .ParamSchema import Placeholder, BatchSamplingQuery, get_placeholder_list
 from .symbol import Interpreter
+
+query_structures = {
+    "Pe_aPt": "def Pe_aPt(e1, r1, e2, r2, e3): return Pe(e1, r1, after(Pt(e2, r2, e3)))",
+    "Pe_bPt": "def Pe_bPt(e1, r1, e2, r2, e3): return Pe(e1, r1, before(Pt(e2, r2, e3)))",
+}
 
 
 class BasicParser(Interpreter):
@@ -64,27 +69,27 @@ class SamplingParser(BasicParser):
 
         def sampling_one_entity():
             entity = random.choice(list(srt2o.keys()))
-            print("sampling_entity", entity)
+            # print("sampling_entity", entity)
             return entity
 
         def sampling_one_relation_for_s(s: Set[int]):
             si = random.choice(list(s))
             relation = random.choice(list(srt2o[si].keys()))
-            print("sampling_relation_for_s", relation)
+            # print("sampling_relation_for_s", relation)
             return relation
 
         def sampling_one_timestamp_for_sr(s: Set[int], r: Set[int]):
             si = random.choice(list(s))
             rj = random.choice(list(r))
             timestamps = random.choice(list(srt2o[si][rj].keys()))
-            print("sampling_timestamp_for_sr", timestamps)
+            # print("sampling_timestamp_for_sr", timestamps)
             return timestamps
 
         def sampling_one_entity_for_sr(s: Set[int], r: Set[int]):
             si = random.choice(list(s))
             rj = random.choice(list(r))
             entities = random.choice(list(sro2t[si][rj].keys()))
-            print("sampling_entity_for_sr", entities)
+            # print("sampling_entity_for_sr", entities)
             return entities
 
         def find_entity(s: Union[BatchSamplingQuery, Placeholder], r: Union[BatchSamplingQuery, Placeholder], t: Union[BatchSamplingQuery, Placeholder]):
@@ -102,7 +107,7 @@ class SamplingParser(BasicParser):
                 for rj in r.answers:
                     for tk in t.timestamps:
                         answers = answers | set(srt2o[si][rj][tk])
-            print("find_entity", answers)
+            # print("find_entity", answers)
             return answers
 
         def find_timestamp(s: Union[BatchSamplingQuery, Placeholder], r: Union[BatchSamplingQuery, Placeholder], o: Union[BatchSamplingQuery, Placeholder]):
@@ -120,7 +125,7 @@ class SamplingParser(BasicParser):
                 for rj in r.answers:
                     for ok in o.answers:
                         timestamps = timestamps | set(sro2t[si][rj][ok])
-            print("find_timestamp", timestamps)
+            # print("find_timestamp", timestamps)
             return timestamps
 
         neural_ops = {
@@ -137,12 +142,7 @@ class SamplingParser(BasicParser):
             "TimeNext": lambda x: BatchSamplingQuery(answers=x.answers, timestamps=set([min(t + 1, max_timestamp_id) for t in x.timestamps] if len(x.timestamps) > 0 else all_timestamp_ids)),
         }
         super().__init__(variables=variables, neural_ops=neural_ops)
-        self.ast_cache = {}
-        self.query_structures = {
-            "Pe_aPt": "def Pe_aPt(e1, r1, e2, r2, e3): return Pe(e1, r1, after(Pt(e2, r2, e3)))",
-            "Pe_bPt": "def Pe_bPt(e1, r1, e2, r2, e3): return Pe(e1, r1, before(Pt(e2, r2, e3)))",
-        }
-        for _, qs in self.query_structures.items():
+        for _, qs in query_structures.items():
             self.eval(qs)
 
 

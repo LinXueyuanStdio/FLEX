@@ -7,6 +7,6 @@
 from ComplexTemporalQueryData import *
 
 dataset = ICEWS14()
-cache_path = ComplexTemporalQueryDatasetCachePath(dataset.root_path)
+cache_path = ComplexTemporalQueryDatasetCachePath(dataset.cache_path)
 data = ComplexQueryData(dataset, cache_path)
 data.preprocess_data_if_needed()

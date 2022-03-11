@@ -4,16 +4,17 @@
 @date: 2022/3/2
 @description: null
 """
-import random
 from collections import defaultdict
 from pathlib import Path
 from typing import List, Tuple, Dict, Set, Union, Any
 
 import expression
 from expression.ParamSchema import placeholder2sample, get_param_name_list, get_placeholder_list
+from expression.TFLEX_DSL import query_structures
 from toolbox.data.DataSchema import DatasetCachePath, BaseData
 from toolbox.data.DatasetSchema import RelationalTripletDatasetSchema
 from toolbox.data.functional import read_cache, cache_data
+from toolbox.utils.Progbar import Progbar
 
 
 class ICEWS14(RelationalTripletDatasetSchema):
@@ -73,15 +74,15 @@ class TemporalKnowledgeDatasetCachePath(DatasetCachePath):
         self.cache_relation2idx_path = self.cache_path / 'relation2idx.pkl'
         self.cache_timestamps2idx_path = self.cache_path / 'timestamp2idx.pkl'
 
-        self.cache_sro_t_path = self.cache_path / 'sro_t.pkl'
-        self.cache_sro_t_train_path = self.cache_path / 'sro_t_train.pkl'
-        self.cache_sro_t_valid_path = self.cache_path / 'sro_t_valid.pkl'
-        self.cache_sro_t_test_path = self.cache_path / 'sro_t_test.pkl'
-
-        self.cache_srt_o_path = self.cache_path / 'srt_o.pkl'
-        self.cache_srt_o_train_path = self.cache_path / 'srt_o_train.pkl'
-        self.cache_srt_o_valid_path = self.cache_path / 'srt_o_valid.pkl'
-        self.cache_srt_o_test_path = self.cache_path / 'srt_o_test.pkl'
+        # self.cache_sro_t_path = self.cache_path / 'sro_t.pkl'
+        # self.cache_sro_t_train_path = self.cache_path / 'sro_t_train.pkl'
+        # self.cache_sro_t_valid_path = self.cache_path / 'sro_t_valid.pkl'
+        # self.cache_sro_t_test_path = self.cache_path / 'sro_t_test.pkl'
+        #
+        # self.cache_srt_o_path = self.cache_path / 'srt_o.pkl'
+        # self.cache_srt_o_train_path = self.cache_path / 'srt_o_train.pkl'
+        # self.cache_srt_o_valid_path = self.cache_path / 'srt_o_valid.pkl'
+        # self.cache_srt_o_test_path = self.cache_path / 'srt_o_test.pkl'
 
 
 def read_triple_srot(file_path: Union[str, Path]) -> List[Tuple[str, str, str, str]]:
@@ -328,14 +329,15 @@ class TemporalKnowledgeData(BaseData):
         cache_data(self.entity2idx, self.cache_path.cache_entity2idx_path)
         cache_data(self.timestamp2idx, self.cache_path.cache_timestamps2idx_path)
 
-        cache_data(self.sro_t, self.cache_path.cache_sro_t_path)
-        cache_data(self.srt_o, self.cache_path.cache_srt_o_path)
-        cache_data(self.sro_t_train, self.cache_path.cache_sro_t_train_path)
-        cache_data(self.srt_o_train, self.cache_path.cache_srt_o_train_path)
-        cache_data(self.sro_t_valid, self.cache_path.cache_sro_t_valid_path)
-        cache_data(self.srt_o_valid, self.cache_path.cache_srt_o_valid_path)
-        cache_data(self.sro_t_test, self.cache_path.cache_sro_t_test_path)
-        cache_data(self.srt_o_test, self.cache_path.cache_srt_o_test_path)
+        # pickle unable to save defaultdict
+        # cache_data(self.sro_t, self.cache_path.cache_sro_t_path)
+        # cache_data(self.srt_o, self.cache_path.cache_srt_o_path)
+        # cache_data(self.sro_t_train, self.cache_path.cache_sro_t_train_path)
+        # cache_data(self.srt_o_train, self.cache_path.cache_srt_o_train_path)
+        # cache_data(self.sro_t_valid, self.cache_path.cache_sro_t_valid_path)
+        # cache_data(self.srt_o_valid, self.cache_path.cache_srt_o_valid_path)
+        # cache_data(self.sro_t_test, self.cache_path.cache_sro_t_test_path)
+        # cache_data(self.srt_o_test, self.cache_path.cache_srt_o_test_path)
 
         cache_data(self.meta(), self.cache_path.cache_metadata_path)
 
@@ -459,11 +461,12 @@ class ComplexQueryData(TemporalKnowledgeData):
         all_triples_ids = append_reverse(self.all_triples_ids, max_relation_id)
         sro_t, srt_o = build_map_sro2t_and_srt2o(all_triples_ids)
         train_triples_ids = append_reverse(self.train_triples_ids, max_relation_id)
-        train_sro_t, train_srt_o = build_map_sro2t_and_srt2o(train_triples_ids)
-        test_triples_ids = append_reverse(self.test_triples_ids, max_relation_id)
-        test_sro_t, test_srt_o = build_map_sro2t_and_srt2o(test_triples_ids)
         valid_triples_ids = append_reverse(self.valid_triples_ids, max_relation_id)
-        valid_sro_t, valid_srt_o = build_map_sro2t_and_srt2o(valid_triples_ids)
+        test_triples_ids = append_reverse(self.test_triples_ids, max_relation_id)
+        relations_ids_with_reverse = self.relations_ids + [r + max_relation_id for r in self.relations_ids]
+        train_sro_t, train_srt_o = build_map_sro2t_and_srt2o(train_triples_ids)
+        valid_sro_t, valid_srt_o = build_map_sro2t_and_srt2o(train_triples_ids + valid_triples_ids)
+        test_sro_t, test_srt_o = build_map_sro2t_and_srt2o(train_triples_ids + valid_triples_ids + test_triples_ids)
 
         # 1. 1-hop: Pe, Pt
         def build_one_hop(param_name_list: List[str], sro_t):
@@ -490,62 +493,65 @@ class ComplexQueryData(TemporalKnowledgeData):
 
         # 2. multi-hop: Pe_aPt, Pe_bPt, etc
         # 2.1 parser
-        parser = expression.SamplingParser(
-            self.entities_ids,
-            self.relations_ids + [r + max_relation_id for r in self.relations_ids],
-            self.timestamps_ids,
-            srt_o, sro_t,
-        )
+        train_parser = expression.SamplingParser(self.entities_ids, relations_ids_with_reverse, self.timestamps_ids, train_srt_o, train_sro_t)
+        valid_parser = expression.SamplingParser(self.entities_ids, relations_ids_with_reverse, self.timestamps_ids, valid_srt_o, valid_sro_t)
+        test_parser = expression.SamplingParser(self.entities_ids, relations_ids_with_reverse, self.timestamps_ids, test_srt_o, test_sro_t)
 
         # 2.2. sampling
         sample_count = self.triple_count // 2
         all_queries_answers = {}
-        structure_func_name_list = parser.query_structures.keys()
-        for func_name in structure_func_name_list:
-            func = parser.eval(func_name)
-            param_name_list = get_param_name_list(func)
-            queries_answers = []
+        query_structure_name_list = query_structures.keys()
+
+        def achieve_answers(train_query_structure_func, valid_query_structure_func, test_query_structure_func):
+            answers = set()
+            valid_answers = set()
+            test_answers = set()
+            placeholders = None
+            while len(answers) <= 0:
+                placeholders = get_placeholder_list(train_query_structure_func)
+                sampling_query_answers = train_query_structure_func(*placeholders)
+                if sampling_query_answers.answers is not None and len(sampling_query_answers.answers) > 0:
+                    answers = sampling_query_answers.answers
+                    valid_answers = valid_query_structure_func(*placeholders).answers
+                    test_answers = test_query_structure_func(*placeholders).answers
+                elif sampling_query_answers.timestamps is not None and len(sampling_query_answers.timestamps) > 0:
+                    answers = sampling_query_answers.timestamps
+                    valid_answers = valid_query_structure_func(*placeholders).timestamps
+                    test_answers = test_query_structure_func(*placeholders).timestamps
+                else:
+                    answers = set()
+                    valid_answers = set()
+                    test_answers = set()
+            queries = placeholder2sample(placeholders)
+            return queries, answers, valid_answers, test_answers
+
+        for query_structure_name in query_structure_name_list:
+            train_query_structure_func = train_parser.eval(query_structure_name)
+            valid_query_structure_func = valid_parser.eval(query_structure_name)
+            test_query_structure_func = test_parser.eval(query_structure_name)
+            train_queries_answers = []
+            valid_queries_answers = []
+            test_queries_answers = []
+            bar = Progbar(sample_count)
             for i in range(sample_count):
-                answers = []
-                placeholders = None
-                while len(answers) <= 0:
-                    placeholders = get_placeholder_list(func)
-                    sampling_query_answers = func(*placeholders)
-                    if sampling_query_answers.answers is not None and len(sampling_query_answers.answers) > 0:
-                        answers = sampling_query_answers.answers
-                    elif sampling_query_answers.timestamps is not None and len(sampling_query_answers.timestamps) > 0:
-                        answers = sampling_query_answers.timestamps
-                    else:
-                        answers = set()
-                queries = placeholder2sample(placeholders)
-                queries_answers.append((queries, answers))
+                queries, answers, valid_answers, test_answers = achieve_answers(train_query_structure_func, valid_query_structure_func, test_query_structure_func)
+                train_queries_answers.append((queries, answers))
+                valid_queries_answers.append((queries, valid_answers))
+                test_queries_answers.append((queries, test_answers))
+                bar.update(i + 1, {"train": len(answers), "valid": len(valid_answers), "test": len(test_answers)})
 
-            data = {
+            param_name_list = get_param_name_list(train_query_structure_func)
+            self.train_queries_answers[query_structure_name] = {
                 "args": param_name_list,
-                "queries_answers": queries_answers
+                "queries_answers": train_queries_answers
             }
-            all_queries_answers[func_name] = data
-
-        # 2.3. split train, valid, test (8:1:1)
-        for k, v in all_queries_answers.items():
-            queries_answers = v["queries_answers"]
-            random.shuffle(queries_answers)
-            train_idx = int(len(queries_answers) * 0.8)
-            valid_idx = train_idx + int(len(queries_answers) * 0.1)
-            train_qa = queries_answers[:train_idx]
-            valid_qa = queries_answers[train_idx:valid_idx]
-            test_qa = queries_answers[valid_idx:]
-            self.train_queries_answers[k] = {
-                "args": v["args"],
-                "queries_answers": train_qa
+            self.valid_queries_answers[query_structure_name] = {
+                "args": param_name_list,
+                "queries_answers": valid_queries_answers
             }
-            self.valid_queries_answers[k] = {
-                "args": v["args"],
-                "queries_answers": valid_qa
-            }
-            self.test_queries_answers[k] = {
-                "args": v["args"],
-                "queries_answers": test_qa
+            self.test_queries_answers[query_structure_name] = {
+                "args": param_name_list,
+                "queries_answers": test_queries_answers
             }
 
         def avg_answers_count(qa):
@@ -572,6 +578,7 @@ class ComplexQueryData(TemporalKnowledgeData):
                     "avg_answers_count": avg_answers_count(test_qa),
                 },
             }
+            print(query_name, self.query_meta[query_name])
 
         for k in self.test_queries_answers.keys():
             calculate_meta(k)
