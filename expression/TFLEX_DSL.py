@@ -25,7 +25,12 @@ class BasicParser(Interpreter):
             "after": neural_ops["TimeAfter"],
             "next": neural_ops["TimeNext"],
         }
-        functions = dict(**neural_ops, **alias)
+        predefine = {
+            "get_param_name_list": lambda x: x.argnames,
+            "get_placeholder_list": get_placeholder_list,
+            "signature": inspect.signature,
+        }
+        functions = dict(**neural_ops, **alias, **predefine)
         super().__init__(usersyms=dict(**variables, **functions))
 
 
@@ -131,37 +136,14 @@ class SamplingParser(BasicParser):
             "TimeAfter": lambda x: BatchSamplingQuery(answers=x.answers, timestamps=set([t for t in timestamp_ids if t > max(x.timestamps)] if len(x.timestamps) > 0 else all_timestamp_ids)),
             "TimeNext": lambda x: BatchSamplingQuery(answers=x.answers, timestamps=set([min(t + 1, max_timestamp_id) for t in x.timestamps] if len(x.timestamps) > 0 else all_timestamp_ids)),
         }
-        predefine = {
-            "get_param_name_list": lambda x: x.argnames,
-            "get_placeholder_list": get_placeholder_list,
-            "signature": inspect.signature,
-        }
-        super().__init__(variables=variables, neural_ops=dict(**neural_ops, **predefine))
+        super().__init__(variables=variables, neural_ops=neural_ops)
         self.ast_cache = {}
         self.query_structures = {
             "Pe_aPt": "def Pe_aPt(e1, r1, e2, r2, e3): return Pe(e1, r1, after(Pt(e2, r2, e3)))",
             "Pe_bPt": "def Pe_bPt(e1, r1, e2, r2, e3): return Pe(e1, r1, before(Pt(e2, r2, e3)))",
         }
-        for name, qs in self.query_structures.items():
-            self.__pre_define(qs)
-        self.func2args = {}
-
-    def __pre_define(self, structure: str):
-        if structure in self.ast_cache:
-            root_node = self.ast_cache[structure]
-        else:
-            root_node = self.parse(structure)
-            self.ast_cache[structure] = root_node
-        return self.run(root_node)
-
-    def build_dataset(self):
-        queries = {
-            "Pe_aPt": [
-                ([1, 2, 4, 3, 2], {1, 2, 5}),  # (query_sample, answer)'
-                ([1, 2, 4, 3, 2], {1, 2, 5}),  # (query_sample, answer)
-                ([1, 2, 4, 3, 2], {1, 2, 5}),  # (query_sample, answer)
-            ]
-        }
+        for _, qs in self.query_structures.items():
+            self.eval(qs)
 
 
 class NeuralParser(BasicParser):

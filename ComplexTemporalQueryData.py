@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import List, Tuple, Dict, Set, Union, Any
 
 import expression
-from expression.ParamSchema import placeholder2sample
+from expression.ParamSchema import placeholder2sample, get_param_name_list, get_placeholder_list
 from toolbox.data.DataSchema import DatasetCachePath, BaseData
 from toolbox.data.DatasetSchema import RelationalTripletDatasetSchema
 from toolbox.data.functional import read_cache, cache_data
@@ -457,9 +457,39 @@ class ComplexQueryData(TemporalKnowledgeData):
             return res
 
         all_triples_ids = append_reverse(self.all_triples_ids, max_relation_id)
-
-        # 2 parser
         sro_t, srt_o = build_map_sro2t_and_srt2o(all_triples_ids)
+        train_triples_ids = append_reverse(self.train_triples_ids, max_relation_id)
+        train_sro_t, train_srt_o = build_map_sro2t_and_srt2o(train_triples_ids)
+        test_triples_ids = append_reverse(self.test_triples_ids, max_relation_id)
+        test_sro_t, test_srt_o = build_map_sro2t_and_srt2o(test_triples_ids)
+        valid_triples_ids = append_reverse(self.valid_triples_ids, max_relation_id)
+        valid_sro_t, valid_srt_o = build_map_sro2t_and_srt2o(valid_triples_ids)
+
+        # 1. 1-hop: Pe, Pt
+        def build_one_hop(param_name_list: List[str], sro_t):
+            queries_answers = []
+            for s in sro_t:
+                for r in sro_t[s]:
+                    for o in sro_t[s][r]:
+                        answers = sro_t[s][r][o]
+                        if len(answers) > 0:
+                            queries = [s, r, o]
+                            queries_answers.append((queries, answers))
+            return {
+                "args": param_name_list,
+                "queries_answers": queries_answers
+            }
+
+        self.train_queries_answers["Pe"] = build_one_hop(["e1", "r1", "t1"], train_srt_o)
+        self.valid_queries_answers["Pe"] = build_one_hop(["e1", "r1", "t1"], valid_srt_o)
+        self.test_queries_answers["Pe"] = build_one_hop(["e1", "r1", "t1"], test_srt_o)
+
+        self.train_queries_answers["Pt"] = build_one_hop(["e1", "r1", "e2"], train_sro_t)
+        self.valid_queries_answers["Pt"] = build_one_hop(["e1", "r1", "e2"], valid_sro_t)
+        self.test_queries_answers["Pt"] = build_one_hop(["e1", "r1", "e2"], test_sro_t)
+
+        # 2. multi-hop: Pe_aPt, Pe_bPt, etc
+        # 2.1 parser
         parser = expression.SamplingParser(
             self.entities_ids,
             self.relations_ids + [r + max_relation_id for r in self.relations_ids],
@@ -467,20 +497,19 @@ class ComplexQueryData(TemporalKnowledgeData):
             srt_o, sro_t,
         )
 
-        # 3. sampling
+        # 2.2. sampling
         sample_count = self.triple_count // 2
         all_queries_answers = {}
         structure_func_name_list = parser.query_structures.keys()
         for func_name in structure_func_name_list:
             func = parser.eval(func_name)
-            param_name_list = parser.eval(f"get_param_name_list({func_name})")
-            print(param_name_list)
+            param_name_list = get_param_name_list(func)
             queries_answers = []
             for i in range(sample_count):
                 answers = []
                 placeholders = None
                 while len(answers) <= 0:
-                    placeholders = parser.eval(f"get_placeholder_list({func_name})")
+                    placeholders = get_placeholder_list(func)
                     sampling_query_answers = func(*placeholders)
                     if sampling_query_answers.answers is not None and len(sampling_query_answers.answers) > 0:
                         answers = sampling_query_answers.answers
@@ -497,7 +526,7 @@ class ComplexQueryData(TemporalKnowledgeData):
             }
             all_queries_answers[func_name] = data
 
-        # 4. split train, valid, test (8:1:1)
+        # 2.3. split train, valid, test (8:1:1)
         for k, v in all_queries_answers.items():
             queries_answers = v["queries_answers"]
             random.shuffle(queries_answers)
@@ -519,10 +548,15 @@ class ComplexQueryData(TemporalKnowledgeData):
                 "queries_answers": test_qa
             }
 
-            def avg_answers_count(qa):
-                return sum([len(a) for q, a in qa]) / len(qa)
+        def avg_answers_count(qa):
+            return sum([len(a) for q, a in qa]) / len(qa)
 
-            self.query_meta[k] = {
+        def calculate_meta(query_name: str):
+            train_qa = self.train_queries_answers[query_name]["queries_answers"]
+            valid_qa = self.valid_queries_answers[query_name]["queries_answers"]
+            test_qa = self.test_queries_answers[query_name]["queries_answers"]
+            queries_answers = train_qa + valid_qa + test_qa
+            self.query_meta[query_name] = {
                 "queries_count": len(queries_answers),
                 "avg_answers_count": avg_answers_count(queries_answers),
                 "train": {
@@ -538,6 +572,9 @@ class ComplexQueryData(TemporalKnowledgeData):
                     "avg_answers_count": avg_answers_count(test_qa),
                 },
             }
+
+        for k in self.test_queries_answers.keys():
+            calculate_meta(k)
 
     def cache_all_data(self):
         TemporalKnowledgeData.cache_all_data(self)

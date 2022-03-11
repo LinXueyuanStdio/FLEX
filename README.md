@@ -18,7 +18,7 @@ CUDA_VISIBLE_DEVICES=0 python train_CQE_FLEX.py --name="FLEX_base" --dataset="FB
 # NELL
 CUDA_VISIBLE_DEVICES=0 python train_CQE_FLEX.py --name="FLEX_base" --dataset="NELL"
 ```
-
+$$q=V_{?},\exists t:criticize(China, Japan, t) \land (visit(Xi Jinping, V_{?}, t'>t) \land \lnot visit(Obama, V_{?}, t'>t))$$
 ## Dataset
 
 The KG data (FB15k, FB15k-237, NELL995) mentioned in the BetaE paper and the Query2box paper can be downloaded [here](http://snap.stanford.edu/betae/KG_data.zip). Note the two use the same training queries, but the difference is that the valid/test queries in BetaE paper have a maximum number of answers, making it more realistic.
