@@ -133,4 +133,4 @@ tmp/
 .fitlog/
 output/
 wandb/
-data/
+cache/
