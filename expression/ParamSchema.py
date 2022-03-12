@@ -107,6 +107,13 @@ def placeholder2sample(placeholder_list: List[Placeholder]) -> List[int]:
     return [i.idx for i in placeholder_list]
 
 
+def placeholder2fixed(placeholder_list: List[Placeholder]) -> List[BatchSamplingQuery]:
+    """
+    将占位符中采样到的idx 转化为 用于保存的格式
+    """
+    return [i.to_sampling_query() for i in placeholder_list]
+
+
 def sample2namedSample(func, sample: List[int]) -> NamedSample:
     params = get_param_name_list(func)
     return [(name, sample_id) for name, sample_id in zip(params, sample)]

@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import List, Tuple, Dict, Set, Union, Any
 
 import expression
-from expression.ParamSchema import placeholder2sample, get_param_name_list, get_placeholder_list
+from expression.ParamSchema import placeholder2sample, get_param_name_list, get_placeholder_list, placeholder2fixed
 from expression.TFLEX_DSL import query_structures
 from toolbox.data.DataSchema import DatasetCachePath, BaseData
 from toolbox.data.DatasetSchema import RelationalTripletDatasetSchema
@@ -450,20 +450,19 @@ class ComplexQueryData(TemporalKnowledgeData):
         TemporalKnowledgeData.transform_all_data(self)
         # 1. add inverse relations
         max_relation_id = self.relation_count
+        relations_ids_with_reverse = self.relations_ids + [r + max_relation_id for r in self.relations_ids]
 
-        def append_reverse(triples, max_relation_id: int):
+        def append_reverse(triples):
+            nonlocal max_relation_id
             res = []
             for s, r, o, t in triples:
                 res.append((s, r, o, t))
                 res.append((o, r + max_relation_id, s, t))
             return res
 
-        all_triples_ids = append_reverse(self.all_triples_ids, max_relation_id)
-        sro_t, srt_o = build_map_sro2t_and_srt2o(all_triples_ids)
-        train_triples_ids = append_reverse(self.train_triples_ids, max_relation_id)
-        valid_triples_ids = append_reverse(self.valid_triples_ids, max_relation_id)
-        test_triples_ids = append_reverse(self.test_triples_ids, max_relation_id)
-        relations_ids_with_reverse = self.relations_ids + [r + max_relation_id for r in self.relations_ids]
+        train_triples_ids = append_reverse(self.train_triples_ids)
+        valid_triples_ids = append_reverse(self.valid_triples_ids)
+        test_triples_ids = append_reverse(self.test_triples_ids)
         train_sro_t, train_srt_o = build_map_sro2t_and_srt2o(train_triples_ids)
         valid_sro_t, valid_srt_o = build_map_sro2t_and_srt2o(train_triples_ids + valid_triples_ids)
         test_sro_t, test_srt_o = build_map_sro2t_and_srt2o(train_triples_ids + valid_triples_ids + test_triples_ids)
@@ -499,7 +498,6 @@ class ComplexQueryData(TemporalKnowledgeData):
 
         # 2.2. sampling
         sample_count = self.triple_count // 2
-        all_queries_answers = {}
         query_structure_name_list = query_structures.keys()
 
         def achieve_answers(train_query_structure_func, valid_query_structure_func, test_query_structure_func):
@@ -512,12 +510,14 @@ class ComplexQueryData(TemporalKnowledgeData):
                 sampling_query_answers = train_query_structure_func(*placeholders)
                 if sampling_query_answers.answers is not None and len(sampling_query_answers.answers) > 0:
                     answers = sampling_query_answers.answers
-                    valid_answers = valid_query_structure_func(*placeholders).answers
-                    test_answers = test_query_structure_func(*placeholders).answers
+                    fixed = placeholder2fixed(placeholders)
+                    valid_answers = valid_query_structure_func(*fixed).answers
+                    test_answers = test_query_structure_func(*fixed).answers
                 elif sampling_query_answers.timestamps is not None and len(sampling_query_answers.timestamps) > 0:
                     answers = sampling_query_answers.timestamps
-                    valid_answers = valid_query_structure_func(*placeholders).timestamps
-                    test_answers = test_query_structure_func(*placeholders).timestamps
+                    fixed = placeholder2fixed(placeholders)
+                    valid_answers = valid_query_structure_func(*fixed).timestamps
+                    test_answers = test_query_structure_func(*fixed).timestamps
                 else:
                     answers = set()
                     valid_answers = set()
