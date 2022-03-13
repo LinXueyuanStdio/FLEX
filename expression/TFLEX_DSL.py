@@ -38,7 +38,7 @@ query_structures = {
     "Pe_at2i": "def Pe_at2i(e1, r1, e2, r2, e3, e4, r3, e5): return Pe(e1, r1, after(t2i(e2, r2, e3, e4, r3, e5)))",
     "Pe_bt2i": "def Pe_bt2i(e1, r1, e2, r2, e3, e4, r3, e5): return Pe(e1, r1, before(t2i(e2, r2, e3, e4, r3, e5)))",
     "Pe_nt2i": "def Pe_nt2i(e1, r1, e2, r2, e3, e4, r3, e5): return Pe(e1, r1, next(t2i(e2, r2, e3, e4, r3, e5)))",
-    "between": "def between(e1, r1, e2, e3, r2, e4): return TimeAnd(after(Pt(e1, r1, e2)), before(Pt(e3, r2, e4))))",  # between(t1, t2) == after t1 and before t2
+    "between": "def between(e1, r1, e2, e3, r2, e4): return TimeAnd(after(Pt(e1, r1, e2)), before(Pt(e3, r2, e4)))",  # between(t1, t2) == after t1 and before t2
     # 5. entity not
     "e2i_NPe": "def e2i_NPe(e1, r1, t1, r2, t2, e2, r3, t3): return And(Not(Pe(Pe(e1, r1, t1), r2, t2)), Pe(e2, r3, t3))",  # pni = e2i_N(Pe(e1, r1, t1), r2, t2, e2, r3, t3)
     "e2i_PeN": "def e2i_PeN(e1, r1, t1, r2, t2, e2, r3, t3): return And(Pe(Pe(e1, r1, t1), r2, t2), Not(Pe(e2, r3, t3)))",  # pin
@@ -46,7 +46,7 @@ query_structures = {
     "e2i_N": "def e2i_N(e1, r1, t1, e2, r2, t2): return And(Pe(e1, r1, t1), Not(Pe(e2, r2, t2)))",  # 2in
     "e3i_N": "def e3i_N(e1, r1, t1, e2, r2, t2, e3, r3, t3): return And3(Pe(e1, r1, t1), Pe(e2, r2, t2), Not(Pe(e3, r3, t3)))",  # 3in
     # 6. time not
-    "t2i_NPt": "def t2i_NPt(e1, r1, t1, r2, t2, e2, r3, t3): return TimeAnd(TimeNot(Pt(Pe(e1, r1, t1), r2, e2)), Pt(e3, r3, e4)))",  # t-pni
+    "t2i_NPt": "def t2i_NPt(e1, r1, t1, r2, t2, e2, r3, t3): return TimeAnd(TimeNot(Pt(Pe(e1, r1, t1), r2, e2)), Pt(e3, r3, e4))",  # t-pni
     "t2i_PtN": "def t2i_PtN(e1, r1, t1, r2, e2, e3, r3, e4): return TimeAnd(Pt(Pe(e1, r1, t1), r2, e2), TimeNot(Pt(e3, r3, e4)))",  # t-pin
     "Pe_t2i_PtPe_NPt": "def Pe_t2i_PtPe_NPt(e1, r1, t1, e2, r2, t2, r3, t3): return Pe(e1, r1, TimeAnd(Pt(Pe(e1, r1, t1), r1, e2), TimeNot(Pt(e3, r2, e4))))",  # t-inp
     "t2i_N": "def t2i_N(e1, r1, e2, e3, r2, e4): return TimeAnd(Pt(e1, r1, e2), TimeNot(Pt(e3, r2, e4)))",  # t-2in
@@ -55,12 +55,12 @@ query_structures = {
     "e2u": "def e2u(e1, r1, t1, e2, r2, t2): return Or(Pe(e1, r1, t1), Pe(e2, r2, t2))",  # 2u
     "Pe_e2u": "def Pe_e2u(e1, r1, t1, e2, r2, t2, r3, t3): return Pe(Or(Pe(e1, r1, t1), Pe(e2, r2, t2)), r3, t3)",  # up
     "t2u": "def t2u(e1, r1, e2, e3, r2, e4): return TimeOr(Pt(e1, r1, e2), Pt(e3, r2, e4))",  # t-2u
-    "Pe_t2u": "def Pe_t2u(e1, r1, e2, e3, r2, e4, e5, r3, e6): return Pe(e1, r1, TimeOr(Pt(e2, r2, e3), Pt(e4, r3, e5))",  # t-up
+    "Pe_t2u": "def Pe_t2u(e1, r1, e2, e3, r2, e4, e5, r3, e6): return Pe(e1, r1, TimeOr(Pt(e2, r2, e3), Pt(e4, r3, e5)))",  # t-up
     # 8. union-DM
     "e2u_DM": "def e2u_DM(e1, r1, t1, e2, r2, t2): return And(Not(Pe(e1, r1, t1)), Not(Pe(e2, r2, t2)))",  # 2u-DM
     "Pe_e2u_DM": "def Pe_e2u_DM(e1, r1, t1, e2, r2, t2, r3, t3): return Pe(And(Not(Pe(e1, r1, t1)), Not(Pe(e2, r2, t2))), r3, t3)",  # up-DM
     "t2u_DM": "def t2u_DM(e1, r1, e2, e3, r2, e4): return TimeAnd(TimeNot(Pt(e1, r1, e2)), TimeNot(Pt(e3, r2, e4)))",  # t-2u-DM
-    "Pe_t2u_DM": "def Pe_t2u_DM(e1, r1, e2, e3, r2, e4, e5, r3, e6): return Pe(e1, r1, TimeAnd(TimeNot(Pt(e2, r2, e3)), TimeNot(Pt(e4, r3, e5)))",  # t-up-DM
+    "Pe_t2u_DM": "def Pe_t2u_DM(e1, r1, e2, e3, r2, e4, e5, r3, e6): return Pe(e1, r1, TimeAnd(TimeNot(Pt(e2, r2, e3)), TimeNot(Pt(e4, r3, e5))))",  # t-up-DM
 }
 train_query_structures = [
     # entity
