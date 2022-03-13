@@ -506,7 +506,7 @@ class ComplexQueryData(TemporalKnowledgeData):
             "e2i_NPe", "e2i_PeN", "Pe_e2i_Pe_NPe", "e2i_N", "e3i_N",  # npi, pni, inp, 2in, 3in
             # time
             "Pt_lPe", "Pt_rPe", "Pe_Pt", "Pe_aPt", "Pe_bPt", "Pe_nPt",  # t-1p, t-2p
-            "t2i", "t3i", "Pt_le2i", "Pt_re2i", "Pe_t2i", "Pe_at2i", "Pe_bt2i", "Pe_nt2i", "between",  # t-2i, t-3i
+            "t2i", "t3i", "Pt_le2i", "Pt_re2i", "Pe_at2i", "Pe_bt2i", "Pe_nt2i", "between",  # t-2i, t-3i
             "t2i_NPt", "t2i_PtN", "Pe_t2i_PtPe_NPt", "t2i_N", "t3i_N",  # t-npi, t-pni, t-inp, t-2in, t-3in
             # entity
             "e2i_Pe", "Pe_e2i",  # pi, ip
@@ -515,6 +515,49 @@ class ComplexQueryData(TemporalKnowledgeData):
             "t2i_Pe", "Pe_t2i",  # t-pi, t-ip
             "t2u", "Pe_t2u",  # t-2u, t-up
         ]
+        # how many samples should we generate?
+        sample_counts = {
+            # entity
+            "Pe2": self.triple_count,
+            "Pe3": self.triple_count,
+            "e2i": self.triple_count,
+            "e3i": self.triple_count,  # 2p, 3p, 2i, 3i
+            "e2i_NPe": self.triple_count // 10,
+            "e2i_PeN": self.triple_count // 10,
+            "Pe_e2i_Pe_NPe": self.triple_count // 10,
+            "e2i_N": self.triple_count // 10,
+            "e3i_N": self.triple_count // 10,  # npi, pni, inp, 2in, 3in
+            # time
+            "Pt_lPe": self.triple_count // 10,
+            "Pt_rPe": self.triple_count // 10,
+            "Pe_Pt": self.triple_count // 10,
+            "Pe_aPt": self.triple_count // 10,
+            "Pe_bPt": self.triple_count // 10,
+            "Pe_nPt": self.triple_count // 10,  # t-1p, t-2p
+            "t2i": self.triple_count,
+            "t3i": self.triple_count,
+            "Pt_le2i": self.triple_count // 10,
+            "Pt_re2i": self.triple_count // 10,
+            "Pe_at2i": self.triple_count // 10,
+            "Pe_bt2i": self.triple_count // 10,
+            "Pe_nt2i": self.triple_count // 10,
+            "between": self.triple_count // 10,  # t-2i, t-3i
+            "t2i_NPt": self.triple_count // 10,
+            "t2i_PtN": self.triple_count // 10,
+            "Pe_t2i_PtPe_NPt": self.triple_count // 10,
+            "t2i_N": self.triple_count // 10,
+            "t3i_N": self.triple_count // 10,  # t-npi, t-pni, t-inp, t-2in, t-3in
+            # entity
+            "e2i_Pe": self.triple_count // 100,
+            "Pe_e2i": self.triple_count // 100,  # pi, ip
+            "e2u": self.triple_count // 100,
+            "Pe_e2u": self.triple_count // 100,  # 2u, up
+            # time
+            "t2i_Pe": self.triple_count // 100,
+            "Pe_t2i": self.triple_count // 100,  # t-pi, t-ip
+            "t2u": self.triple_count // 100,
+            "Pe_t2u": self.triple_count // 100,  # t-2u, t-up
+        }
 
         def achieve_answers(train_query_structure_func, valid_query_structure_func, test_query_structure_func):
             answers = set()
@@ -548,7 +591,7 @@ class ComplexQueryData(TemporalKnowledgeData):
             train_queries_answers = []
             valid_queries_answers = []
             test_queries_answers = []
-            sample_count = self.triple_count // 2  # how many samples should we generate?
+            sample_count = sample_counts[query_structure_name]
             bar = Progbar(sample_count)
             for i in range(sample_count):
                 queries, answers, valid_answers, test_answers = achieve_answers(train_query_structure_func, valid_query_structure_func, test_query_structure_func)
