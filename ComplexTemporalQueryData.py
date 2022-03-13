@@ -498,7 +498,6 @@ class ComplexQueryData(TemporalKnowledgeData):
         test_parser = expression.SamplingParser(self.entities_ids, relations_ids_with_reverse, self.timestamps_ids, test_srt_o, test_sro_t)
 
         # 2.2. sampling
-        sample_count = self.triple_count // 2
         query_structure_name_list = [
             # entity
             "Pe2", "Pe3", "e2i", "e3i",  # 2p, 3p, 2i, 3i
@@ -547,6 +546,7 @@ class ComplexQueryData(TemporalKnowledgeData):
             train_queries_answers = []
             valid_queries_answers = []
             test_queries_answers = []
+            sample_count = self.triple_count // 2  # how many samples should we generate?
             bar = Progbar(sample_count)
             for i in range(sample_count):
                 queries, answers, valid_answers, test_answers = achieve_answers(train_query_structure_func, valid_query_structure_func, test_query_structure_func)
