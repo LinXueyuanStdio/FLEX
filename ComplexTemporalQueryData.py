@@ -448,7 +448,8 @@ class ComplexQueryData(TemporalKnowledgeData):
 
     def transform_all_data(self):
         TemporalKnowledgeData.transform_all_data(self)
-        # 1. add inverse relations
+        # 0. prepare data.
+        # add inverse relations
         max_relation_id = self.relation_count
         relations_ids_with_reverse = self.relations_ids + [r + max_relation_id for r in self.relations_ids]
 
@@ -498,7 +499,21 @@ class ComplexQueryData(TemporalKnowledgeData):
 
         # 2.2. sampling
         sample_count = self.triple_count // 2
-        query_structure_name_list = query_structures.keys()
+        query_structure_name_list = [
+            # entity
+            "Pe2", "Pe3", "e2i", "e3i",  # 2p, 3p, 2i, 3i
+            "e2i_NPe", "e2i_PeN", "Pe_e2i_Pe_NPe", "e2i_N", "e3i_N",  # npi, pni, inp, 2in, 3in
+            # time
+            "Pt_lPe", "Pt_rPe", "Pe_Pt", "Pe_aPt", "Pe_bPt", "Pe_nPt",  # t-1p, t-2p
+            "t2i", "t3i", "Pt_le2i", "Pt_re2i", "Pe_t2i", "Pe_at2i", "Pe_bt2i", "Pe_nt2i", "between",  # t-2i, t-3i
+            "t2i_NPt", "t2i_PtN", "Pe_t2i_PtPe_NPt", "t2i_N", "t3i_N",  # t-npi, t-pni, t-inp, t-2in, t-3in
+            # entity
+            "e2u", "Pe_e2u",  # 2u, up
+            # time
+            "t2u", "Pe_t2u",  # t-2u, t-up
+        ]
+        # we generate 1p, t-1p according to original train/valid/test triples.
+        # we generate union-DM after auto generating 2u, up, t-2u, t-up.
 
         def achieve_answers(train_query_structure_func, valid_query_structure_func, test_query_structure_func):
             answers = set()
@@ -554,6 +569,7 @@ class ComplexQueryData(TemporalKnowledgeData):
                 "queries_answers": test_queries_answers
             }
 
+        # 3. calculate meta
         def avg_answers_count(qa):
             return sum([len(a) for q, a in qa]) / len(qa)
 

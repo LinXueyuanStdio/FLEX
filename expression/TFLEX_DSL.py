@@ -12,8 +12,7 @@ from .ParamSchema import Placeholder, FixedQuery, get_placeholder_list
 from .symbol import Interpreter
 
 query_structures = {
-    # 1. 1-hop
-    # Pe and Pt, manually
+    # 1. 1-hop Pe and Pt, manually
     # 2. entity multi-hop
     "Pe2": "def Pe2(e1, r1, t1, r2, t2): return Pe(Pe(e1, r1, t1), r2, t2)",  # 2p
     "Pe3": "def Pe3(e1, r1, t1, r2, t2, r3, t3): return Pe(Pe(Pe(e1, r1, t1), r2, t2), r3, t3)",  # 3p
@@ -54,6 +53,11 @@ query_structures = {
     "Pe_e2u": "def Pe_e2u(e1, r1, t1, e2, r2, t2, r3, t3): return Pe(Or(Pe(e1, r1, t1), Pe(e2, r2, t2)), r3, t3)",  # up
     "t2u": "def t2u(e1, r1, e2, e3, r2, e4): return TimeOr(Pt(e1, r1, e2), Pt(e3, r2, e4))",  # t-2u
     "Pe_t2u": "def Pe_t2u(e1, r1, e2, e3, r2, e4, e5, r3, e6): return Pe(e1, r1, TimeOr(Pt(e2, r2, e3), Pt(e4, r3, e5))",  # t-up
+    # 8. union-DM
+    "e2u_DM": "def e2u_DM(e1, r1, t1, e2, r2, t2): return And(Not(Pe(e1, r1, t1)), Not(Pe(e2, r2, t2)))",  # 2u-DM
+    "Pe_e2u_DM": "def Pe_e2u_DM(e1, r1, t1, e2, r2, t2, r3, t3): return Pe(And(Not(Pe(e1, r1, t1)), Not(Pe(e2, r2, t2))), r3, t3)",  # up-DM
+    "t2u_DM": "def t2u_DM(e1, r1, e2, e3, r2, e4): return TimeAnd(TimeNot(Pt(e1, r1, e2)), TimeNot(Pt(e3, r2, e4)))",  # t-2u-DM
+    "Pe_t2u_DM": "def Pe_t2u_DM(e1, r1, e2, e3, r2, e4, e5, r3, e6): return Pe(e1, r1, TimeAnd(TimeNot(Pt(e2, r2, e3)), TimeNot(Pt(e4, r3, e5)))",  # t-up-DM
 }
 train_query_structures = [
     # entity
