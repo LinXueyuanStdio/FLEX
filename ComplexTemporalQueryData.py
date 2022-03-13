@@ -585,6 +585,7 @@ class ComplexQueryData(TemporalKnowledgeData):
             return queries, answers, valid_answers, test_answers
 
         for query_structure_name in query_structure_name_list:
+            print(query_structure_name)
             train_query_structure_func = train_parser.eval(query_structure_name)
             valid_query_structure_func = valid_parser.eval(query_structure_name)
             test_query_structure_func = test_parser.eval(query_structure_name)

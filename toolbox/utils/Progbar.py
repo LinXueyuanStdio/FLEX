@@ -7,7 +7,7 @@
 import sys
 import time
 from typing import Dict, Any, Union, Tuple, List
-
+import datetime
 import numpy as np
 
 
@@ -84,15 +84,15 @@ class Progbar(object):
     def _get_eta(self, curr_step: int):
         now = time.time()
         if curr_step:
-            time_per_unit = (now - self.start) / curr_step
+            time_per_step = (now - self.start) / curr_step
         else:
-            time_per_unit = 0
-        eta = time_per_unit * (self.max_step - curr_step)
+            time_per_step = 0
+        eta = time_per_step * (self.max_step - curr_step)
 
         if curr_step < self.max_step:
-            info = ' - ETA: %ds' % eta
+            info = ' - ETA: %s' % str(datetime.timedelta(seconds=eta))
         else:
-            info = ' - %ds' % (now - self.start)
+            info = ' - %s' % str(datetime.timedelta(seconds=now - self.start))
 
         return info
 
