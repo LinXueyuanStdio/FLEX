@@ -4,11 +4,11 @@
 @date: 2022/2/21
 @description: null
 """
-import inspect
 import random
+from math import pi
 from typing import List, Set, Dict, Union
 
-from .ParamSchema import Placeholder, FixedQuery, get_placeholder_list
+from .ParamSchema import Placeholder, FixedQuery
 from .symbol import Interpreter
 
 query_structures = {
@@ -29,16 +29,16 @@ query_structures = {
     "t2i": "def t2i(e1, r1, e2, e3, r2, e4): return TimeAnd(Pt(e1, r1, e2), Pt(e3, r2, e4))",  # t-2i
     "t3i": "def t3i(e1, r1, e2, e3, r2, e4, e5, r3, e6): return TimeAnd3(Pt(e1, r1, e2), Pt(e3, r2, e4), Pt(e5, r3, e6))",  # t-3i
     # 5. complex time and
-    "e2i_Pe": "def e2i_Pe(e1, r1, t1, r2, t2, e2, r3, t3): return And(Pe(Pe(e1, r1, t1), r2, t2), Pe(e2, r3, t3))", # pi
-    "Pe_e2i": "def Pe_e2i(e1, r1, t1, e2, r2, t2): return Pe(And(Pe(e1, r1, t1), Pe(e2, r2, t2)), r3, t3)", # ip
+    "e2i_Pe": "def e2i_Pe(e1, r1, t1, r2, t2, e2, r3, t3): return And(Pe(Pe(e1, r1, t1), r2, t2), Pe(e2, r3, t3))",  # pi
+    "Pe_e2i": "def Pe_e2i(e1, r1, t1, e2, r2, t2): return Pe(And(Pe(e1, r1, t1), Pe(e2, r2, t2)), r3, t3)",  # ip
     "Pt_le2i": "def Pt_le2i(e1, r1, t1, e2, r2, t2, r3, e3): return Pt(e2i(e1, r1, t1, e2, r2, t2), r3, e3)",  # mix ip
     "Pt_re2i": "def Pt_re2i(e1, r1, e2, r2, t1, e3, r3, t2): return Pt(e1, r1, e2i(e2, r2, t1, e3, r3, t2))",  # mix ip
-    "t2i_Pe": "def t2i_Pe(e1, r1, t1, r2, t2, e2, r3, t3): return TimeAnd(Pt(Pe(e1, r1, t1), r2, e2), Pt(e3, r3, e4))", # t-pi
+    "t2i_Pe": "def t2i_Pe(e1, r1, t1, r2, t2, e2, r3, t3): return TimeAnd(Pt(Pe(e1, r1, t1), r2, e2), Pt(e3, r3, e4))",  # t-pi
     "Pe_t2i": "def Pe_t2i(e1, r1, e2, r2, e3, e4, r3, e5): return Pe(e1, r1, t2i(e2, r2, e3, e4, r3, e5))",  # t-ip
     "Pe_at2i": "def Pe_at2i(e1, r1, e2, r2, e3, e4, r3, e5): return Pe(e1, r1, after(t2i(e2, r2, e3, e4, r3, e5)))",
     "Pe_bt2i": "def Pe_bt2i(e1, r1, e2, r2, e3, e4, r3, e5): return Pe(e1, r1, before(t2i(e2, r2, e3, e4, r3, e5)))",
     "Pe_nt2i": "def Pe_nt2i(e1, r1, e2, r2, e3, e4, r3, e5): return Pe(e1, r1, next(t2i(e2, r2, e3, e4, r3, e5)))",
-    "between": "def between(e1, r1, e2, e3, r2, e4): return TimeAnd(after(Pt(e1, r1, e2)), before(Pt(e3, r2, e4))))",  # between t1, t2 == after t1 and before t2
+    "between": "def between(e1, r1, e2, e3, r2, e4): return TimeAnd(after(Pt(e1, r1, e2)), before(Pt(e3, r2, e4))))",  # between(t1, t2) == after t1 and before t2
     # 5. entity not
     "e2i_NPe": "def e2i_NPe(e1, r1, t1, r2, t2, e2, r3, t3): return And(Not(Pe(Pe(e1, r1, t1), r2, t2)), Pe(e2, r3, t3))",  # pni = e2i_N(Pe(e1, r1, t1), r2, t2, e2, r3, t3)
     "e2i_PeN": "def e2i_PeN(e1, r1, t1, r2, t2, e2, r3, t3): return And(Pe(Pe(e1, r1, t1), r2, t2), Not(Pe(e2, r3, t3)))",  # pin
@@ -73,10 +73,10 @@ train_query_structures = [
 ]
 test_query_structures = train_query_structures + [
     # entity
-    "e2i_Pe", "Pe_e2i", # pi, ip
+    "e2i_Pe", "Pe_e2i",  # pi, ip
     "e2u", "Pe_e2u",  # 2u, up
     # time
-    "t2i_Pe", "Pe_t2i", # t-pi, t-ip
+    "t2i_Pe", "Pe_t2i",  # t-pi, t-ip
     "t2u", "Pe_t2u",  # t-2u, t-up
 ]
 
@@ -95,9 +95,7 @@ class BasicParser(Interpreter):
             "next": neural_ops["TimeNext"],
         }
         predefine = {
-            "get_param_name_list": lambda x: x.argnames,
-            "get_placeholder_list": get_placeholder_list,
-            "signature": inspect.signature,
+            "pi": pi,
         }
         functions = dict(**neural_ops, **alias, **predefine)
         super().__init__(usersyms=dict(**variables, **functions))

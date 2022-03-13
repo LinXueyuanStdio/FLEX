@@ -10,7 +10,6 @@ from typing import List, Tuple, Dict, Set, Union, Any
 
 import expression
 from expression.ParamSchema import placeholder2sample, get_param_name_list, get_placeholder_list, placeholder2fixed
-from expression.TFLEX_DSL import query_structures
 from toolbox.data.DataSchema import DatasetCachePath, BaseData
 from toolbox.data.DatasetSchema import RelationalTripletDatasetSchema
 from toolbox.data.functional import read_cache, cache_data
@@ -498,6 +497,9 @@ class ComplexQueryData(TemporalKnowledgeData):
         test_parser = expression.SamplingParser(self.entities_ids, relations_ids_with_reverse, self.timestamps_ids, test_srt_o, test_sro_t)
 
         # 2.2. sampling
+        # we generate 1p, t-1p according to original train/valid/test triples.
+        # for union-DM, we don't need to actually generate it.
+        # The model should use 2u, up, t-2u, t-up with DM by itself.
         query_structure_name_list = [
             # entity
             "Pe2", "Pe3", "e2i", "e3i",  # 2p, 3p, 2i, 3i
@@ -507,12 +509,12 @@ class ComplexQueryData(TemporalKnowledgeData):
             "t2i", "t3i", "Pt_le2i", "Pt_re2i", "Pe_t2i", "Pe_at2i", "Pe_bt2i", "Pe_nt2i", "between",  # t-2i, t-3i
             "t2i_NPt", "t2i_PtN", "Pe_t2i_PtPe_NPt", "t2i_N", "t3i_N",  # t-npi, t-pni, t-inp, t-2in, t-3in
             # entity
+            "e2i_Pe", "Pe_e2i",  # pi, ip
             "e2u", "Pe_e2u",  # 2u, up
             # time
+            "t2i_Pe", "Pe_t2i",  # t-pi, t-ip
             "t2u", "Pe_t2u",  # t-2u, t-up
         ]
-        # we generate 1p, t-1p according to original train/valid/test triples.
-        # we generate union-DM after auto generating 2u, up, t-2u, t-up.
 
         def achieve_answers(train_query_structure_func, valid_query_structure_func, test_query_structure_func):
             answers = set()
