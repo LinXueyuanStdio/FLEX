@@ -27,7 +27,7 @@ def is_timestamp(name) -> bool:
     return name.startswith(type_timestamp)
 
 
-class BatchSamplingQuery:
+class FixedQuery:
     """
     推理过程的中间状态
     """
@@ -75,11 +75,11 @@ class Placeholder:
     def to_tuple(self) -> Tuple[str, int]:
         return self.name, self.idx
 
-    def to_sampling_query(self) -> BatchSamplingQuery:
+    def to_sampling_query(self) -> FixedQuery:
         if is_timestamp(self.name):
-            return BatchSamplingQuery(timestamps={self.idx}, is_anchor=True)
+            return FixedQuery(timestamps={self.idx}, is_anchor=True)
         else:
-            return BatchSamplingQuery(answers={self.idx}, is_anchor=True)
+            return FixedQuery(answers={self.idx}, is_anchor=True)
 
 
 def get_param_name_list(func) -> List[str]:
@@ -107,7 +107,7 @@ def placeholder2sample(placeholder_list: List[Placeholder]) -> List[int]:
     return [i.idx for i in placeholder_list]
 
 
-def placeholder2fixed(placeholder_list: List[Placeholder]) -> List[BatchSamplingQuery]:
+def placeholder2fixed(placeholder_list: List[Placeholder]) -> List[FixedQuery]:
     """
     将占位符中采样到的idx 转化为 用于保存的格式
     """

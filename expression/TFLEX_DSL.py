@@ -8,11 +8,21 @@ import inspect
 import random
 from typing import List, Set, Dict, Union
 
-from .ParamSchema import Placeholder, BatchSamplingQuery, get_placeholder_list
+from .ParamSchema import Placeholder, FixedQuery, get_placeholder_list
 from .symbol import Interpreter
 
 query_structures = {
+    # plz read from right to left
+    # 1. 1-hop
+    # Pe and Pt, manually
+    # 2. 2-hop
+    "Pt_rPe": "def Pt_Pe(e1, r1, e2, r2, t1): return Pt(e1, r1, Pe(e2, r2, t1))", # r for right
+    "Pt_lPe": "def Pt_Pe(e1, r1, t1, r2, e2): return Pt(Pe(e1, r1, t1), r2, e2)", # l for left
+    "Pe_Pt": "def Pe_Pt(e1, r1, e2, r2, e3): return Pe(e1, r1, Pt(e2, r2, e3))",
     "Pe_aPt": "def Pe_aPt(e1, r1, e2, r2, e3): return Pe(e1, r1, after(Pt(e2, r2, e3)))",
+    "Pe_bPt": "def Pe_bPt(e1, r1, e2, r2, e3): return Pe(e1, r1, before(Pt(e2, r2, e3)))",
+    "Pe_nPt": "def Pe_bPt(e1, r1, e2, r2, e3): return Pe(e1, r1, next(Pt(e2, r2, e3)))",
+    # 3. and
     "Pe_bPt": "def Pe_bPt(e1, r1, e2, r2, e3): return Pe(e1, r1, before(Pt(e2, r2, e3)))",
 }
 
@@ -61,11 +71,11 @@ class SamplingParser(BasicParser):
             "t": Placeholder("t"),
         }
         for e_id in entity_ids:
-            variables[f"e{e_id}"] = BatchSamplingQuery(answers={e_id}, is_anchor=True)
+            variables[f"e{e_id}"] = FixedQuery(answers={e_id}, is_anchor=True)
         for r_id in relation_ids:
-            variables[f"r{r_id}"] = BatchSamplingQuery(answers={r_id}, is_anchor=True)
+            variables[f"r{r_id}"] = FixedQuery(answers={r_id}, is_anchor=True)
         for t_id in timestamp_ids:
-            variables[f"t{t_id}"] = BatchSamplingQuery(timestamps={t_id}, is_anchor=True)
+            variables[f"t{t_id}"] = FixedQuery(timestamps={t_id}, is_anchor=True)
 
         def sampling_one_entity():
             entity = random.choice(list(srt2o.keys()))
@@ -92,16 +102,16 @@ class SamplingParser(BasicParser):
             # print("sampling_entity_for_sr", entities)
             return entities
 
-        def find_entity(s: Union[BatchSamplingQuery, Placeholder], r: Union[BatchSamplingQuery, Placeholder], t: Union[BatchSamplingQuery, Placeholder]):
+        def find_entity(s: Union[FixedQuery, Placeholder], r: Union[FixedQuery, Placeholder], t: Union[FixedQuery, Placeholder]):
             if isinstance(s, Placeholder):
                 s.fill(sampling_one_entity())
-                s = BatchSamplingQuery(answers={s.idx}, is_anchor=True)
+                s = FixedQuery(answers={s.idx}, is_anchor=True)
             if isinstance(r, Placeholder):
                 r.fill(sampling_one_relation_for_s(s.answers))
-                r = BatchSamplingQuery(answers={r.idx}, is_anchor=True)
+                r = FixedQuery(answers={r.idx}, is_anchor=True)
             if isinstance(t, Placeholder):
                 t.fill(sampling_one_timestamp_for_sr(s.answers, r.answers))
-                t = BatchSamplingQuery(timestamps={t.idx}, is_anchor=True)
+                t = FixedQuery(timestamps={t.idx}, is_anchor=True)
             answers = set()
             for si in s.answers:
                 for rj in r.answers:
@@ -110,16 +120,16 @@ class SamplingParser(BasicParser):
             # print("find_entity", answers)
             return answers
 
-        def find_timestamp(s: Union[BatchSamplingQuery, Placeholder], r: Union[BatchSamplingQuery, Placeholder], o: Union[BatchSamplingQuery, Placeholder]):
+        def find_timestamp(s: Union[FixedQuery, Placeholder], r: Union[FixedQuery, Placeholder], o: Union[FixedQuery, Placeholder]):
             if isinstance(s, Placeholder):
                 s.fill(sampling_one_entity())
-                s = BatchSamplingQuery(answers={s.idx}, is_anchor=True)
+                s = FixedQuery(answers={s.idx}, is_anchor=True)
             if isinstance(r, Placeholder):
                 r.fill(sampling_one_relation_for_s(s.answers))
-                r = BatchSamplingQuery(answers={r.idx}, is_anchor=True)
+                r = FixedQuery(answers={r.idx}, is_anchor=True)
             if isinstance(o, Placeholder):
                 o.fill(sampling_one_entity_for_sr(s.answers, r.answers))
-                o = BatchSamplingQuery(answers={o.idx}, is_anchor=True)
+                o = FixedQuery(answers={o.idx}, is_anchor=True)
             timestamps = set()
             for si in s.answers:
                 for rj in r.answers:
@@ -129,17 +139,17 @@ class SamplingParser(BasicParser):
             return timestamps
 
         neural_ops = {
-            "AND": lambda q1, q2: BatchSamplingQuery(answers=q1.answers & q2.answers, timestamps=q1.timestamps & q2.timestamps),
-            "OR": lambda q1, q2: BatchSamplingQuery(answers=q1.answers | q2.answers, timestamps=q1.timestamps & q2.timestamps),
-            "NOT": lambda x: BatchSamplingQuery(answers=all_entity_ids - x.answers, timestamps=x.timestamps),
-            "EntityProjection": lambda s, r, t: BatchSamplingQuery(answers=find_entity(s, r, t)),
-            "TimeProjection": lambda s, r, o: BatchSamplingQuery(timestamps=find_timestamp(s, r, o)),
-            "TimeAnd": lambda q1, q2: BatchSamplingQuery(answers=q1.answers & q2.answers, timestamps=q1.timestamps & q2.timestamps),
-            "TimeOr": lambda q1, q2: BatchSamplingQuery(answers=q1.answers & q2.answers, timestamps=q1.timestamps | q2.timestamps),
-            "TimeNot": lambda x: BatchSamplingQuery(answers=x.answers, timestamps=all_timestamp_ids - x.timestamps if len(x.timestamps) > 0 else set()),
-            "TimeBefore": lambda x: BatchSamplingQuery(answers=x.answers, timestamps=set([t for t in timestamp_ids if t < min(x.timestamps)] if len(x.timestamps) > 0 else all_timestamp_ids)),
-            "TimeAfter": lambda x: BatchSamplingQuery(answers=x.answers, timestamps=set([t for t in timestamp_ids if t > max(x.timestamps)] if len(x.timestamps) > 0 else all_timestamp_ids)),
-            "TimeNext": lambda x: BatchSamplingQuery(answers=x.answers, timestamps=set([min(t + 1, max_timestamp_id) for t in x.timestamps] if len(x.timestamps) > 0 else all_timestamp_ids)),
+            "AND": lambda q1, q2: FixedQuery(answers=q1.answers & q2.answers, timestamps=q1.timestamps & q2.timestamps),
+            "OR": lambda q1, q2: FixedQuery(answers=q1.answers | q2.answers, timestamps=q1.timestamps & q2.timestamps),
+            "NOT": lambda x: FixedQuery(answers=all_entity_ids - x.answers, timestamps=x.timestamps),
+            "EntityProjection": lambda s, r, t: FixedQuery(answers=find_entity(s, r, t)),
+            "TimeProjection": lambda s, r, o: FixedQuery(timestamps=find_timestamp(s, r, o)),
+            "TimeAnd": lambda q1, q2: FixedQuery(answers=q1.answers & q2.answers, timestamps=q1.timestamps & q2.timestamps),
+            "TimeOr": lambda q1, q2: FixedQuery(answers=q1.answers & q2.answers, timestamps=q1.timestamps | q2.timestamps),
+            "TimeNot": lambda x: FixedQuery(answers=x.answers, timestamps=all_timestamp_ids - x.timestamps if len(x.timestamps) > 0 else set()),
+            "TimeBefore": lambda x: FixedQuery(answers=x.answers, timestamps=set([t for t in timestamp_ids if t < min(x.timestamps)] if len(x.timestamps) > 0 else all_timestamp_ids)),
+            "TimeAfter": lambda x: FixedQuery(answers=x.answers, timestamps=set([t for t in timestamp_ids if t > max(x.timestamps)] if len(x.timestamps) > 0 else all_timestamp_ids)),
+            "TimeNext": lambda x: FixedQuery(answers=x.answers, timestamps=set([min(t + 1, max_timestamp_id) for t in x.timestamps] if len(x.timestamps) > 0 else all_timestamp_ids)),
         }
         super().__init__(variables=variables, neural_ops=neural_ops)
         for _, qs in query_structures.items():
