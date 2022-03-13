@@ -143,7 +143,10 @@ class SamplingParser(BasicParser):
         def sampling_one_timestamp_for_sr(s: Set[int], r: Set[int]):
             si = random.choice(list(s))
             rj = random.choice(list(r))
-            timestamps = random.choice(list(srt2o[si][rj].keys()))
+            choices = list(srt2o[si][rj].keys())
+            if len(choices) <= 0:
+                return None
+            timestamps = random.choice(choices)
             # print("sampling_timestamp_for_sr", timestamps)
             return timestamps
 
