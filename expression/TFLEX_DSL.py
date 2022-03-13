@@ -150,11 +150,20 @@ class SamplingParser(BasicParser):
         def sampling_one_entity_for_sr(s: Set[int], r: Set[int]):
             si = random.choice(list(s))
             rj = random.choice(list(r))
-            entities = random.choice(list(sro2t[si][rj].keys()))
+            choices = list(sro2t[si][rj].keys())
+            if len(choices) <= 0:
+                return None
+            entities = random.choice(choices)
             # print("sampling_entity_for_sr", entities)
             return entities
 
         def find_entity(s: Union[FixedQuery, Placeholder], r: Union[FixedQuery, Placeholder], t: Union[FixedQuery, Placeholder]):
+            entities = _find_entity(s, r, t)
+            while len(entities) <= 0:
+                entities = _find_entity(s, r, t)
+            return entities
+
+        def _find_entity(s: Union[FixedQuery, Placeholder], r: Union[FixedQuery, Placeholder], t: Union[FixedQuery, Placeholder]):
             if isinstance(s, Placeholder):
                 s.fill(sampling_one_entity())
                 s = FixedQuery(answers={s.idx}, is_anchor=True)
@@ -162,7 +171,10 @@ class SamplingParser(BasicParser):
                 r.fill(sampling_one_relation_for_s(s.answers))
                 r = FixedQuery(answers={r.idx}, is_anchor=True)
             if isinstance(t, Placeholder):
-                t.fill(sampling_one_timestamp_for_sr(s.answers, r.answers))
+                timestamps = sampling_one_timestamp_for_sr(s.answers, r.answers)
+                if timestamps is None:
+                    return set()
+                t.fill(timestamps)
                 t = FixedQuery(timestamps={t.idx}, is_anchor=True)
             answers = set()
             for si in s.answers:
@@ -173,6 +185,12 @@ class SamplingParser(BasicParser):
             return answers
 
         def find_timestamp(s: Union[FixedQuery, Placeholder], r: Union[FixedQuery, Placeholder], o: Union[FixedQuery, Placeholder]):
+            timestamps = _find_timestamp(s, r, o)
+            while len(timestamps) <= 0:
+                timestamps = _find_timestamp(s, r, o)
+            return timestamps
+
+        def _find_timestamp(s: Union[FixedQuery, Placeholder], r: Union[FixedQuery, Placeholder], o: Union[FixedQuery, Placeholder]):
             if isinstance(s, Placeholder):
                 s.fill(sampling_one_entity())
                 s = FixedQuery(answers={s.idx}, is_anchor=True)
@@ -180,7 +198,10 @@ class SamplingParser(BasicParser):
                 r.fill(sampling_one_relation_for_s(s.answers))
                 r = FixedQuery(answers={r.idx}, is_anchor=True)
             if isinstance(o, Placeholder):
-                o.fill(sampling_one_entity_for_sr(s.answers, r.answers))
+                entities = sampling_one_entity_for_sr(s.answers, r.answers)
+                if entities is None:
+                    return set()
+                o.fill(entities)
                 o = FixedQuery(answers={o.idx}, is_anchor=True)
             timestamps = set()
             for si in s.answers:
