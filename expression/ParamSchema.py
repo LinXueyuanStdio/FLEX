@@ -33,8 +33,8 @@ class FixedQuery:
     """
 
     def __init__(self, answers=None, timestamps=None, is_anchor=False):
-        self.answers = answers
-        self.timestamps = timestamps
+        self.answers = answers if answers is not None else set()
+        self.timestamps = timestamps if timestamps is not None else set()
         self.is_anchor = is_anchor
 
     def __repr__(self):
