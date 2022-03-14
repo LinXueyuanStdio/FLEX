@@ -8,6 +8,8 @@ from collections import defaultdict
 from pathlib import Path
 from typing import List, Tuple, Dict, Set, Union, Any
 
+from torch.utils.data import Dataset, DataLoader
+
 import expression
 from expression.ParamSchema import placeholder2sample, get_param_name_list, get_placeholder_list, placeholder2fixed
 from toolbox.data.DataSchema import DatasetCachePath, BaseData
@@ -559,6 +561,32 @@ class ComplexQueryData(TemporalKnowledgeData):
             "Pe_t2u": self.triple_count // 100,  # t-2u, t-up
         }
 
+        class SamplingDataset(Dataset):
+            """
+            we use dataloader of PyTorch for sampling.
+            """
+
+            def __init__(self, train_parser, valid_parser, test_parser, query_structure_name, sample_count):
+                self.train_query_structure_func = train_parser.eval(query_structure_name)
+                self.valid_query_structure_func = valid_parser.eval(query_structure_name)
+                self.test_query_structure_func = test_parser.eval(query_structure_name)
+                self.query_structure_name = query_structure_name
+                self.sample_count = sample_count
+
+            def __len__(self):
+                return self.sample_count
+
+            def __getitem__(self, idx):
+                return achieve_answers(self.train_query_structure_func, self.valid_query_structure_func, self.test_query_structure_func)
+
+            @staticmethod
+            def collate_fn(data):
+                queries = [_[0] for _ in data]
+                answers = [_[1] for _ in data]
+                valid_answers = [_[2] for _ in data]
+                test_answers = [_[3] for _ in data]
+                return queries, answers, valid_answers, test_answers
+
         def achieve_answers(train_query_structure_func, valid_query_structure_func, test_query_structure_func):
             answers = set()
             valid_answers = set()
@@ -586,20 +614,30 @@ class ComplexQueryData(TemporalKnowledgeData):
 
         for query_structure_name in query_structure_name_list:
             print(query_structure_name)
+            sample_count = sample_counts[query_structure_name]
+            num_workers = 16
+            sampling_loader = DataLoader(
+                SamplingDataset(train_parser, valid_parser, test_parser, query_structure_name, sample_count),
+                batch_size=512,
+                num_workers=num_workers,
+                collate_fn=SamplingDataset.collate_fn
+            )
             train_query_structure_func = train_parser.eval(query_structure_name)
-            valid_query_structure_func = valid_parser.eval(query_structure_name)
-            test_query_structure_func = test_parser.eval(query_structure_name)
+            # valid_query_structure_func = valid_parser.eval(query_structure_name)
+            # test_query_structure_func = test_parser.eval(query_structure_name)
             train_queries_answers = []
             valid_queries_answers = []
             test_queries_answers = []
-            sample_count = sample_counts[query_structure_name]
             bar = Progbar(sample_count)
-            for i in range(sample_count):
-                queries, answers, valid_answers, test_answers = achieve_answers(train_query_structure_func, valid_query_structure_func, test_query_structure_func)
-                train_queries_answers.append((queries, answers))
-                valid_queries_answers.append((queries, valid_answers))
-                test_queries_answers.append((queries, test_answers))
-                bar.update(i + 1, {"train": len(answers), "valid": len(valid_answers), "test": len(test_answers)})
+            i = 0
+            for batch_queries, batch_answers, batch_valid_answers, batch_test_answers in sampling_loader:
+                # queries, answers, valid_answers, test_answers = achieve_answers(train_query_structure_func, valid_query_structure_func, test_query_structure_func)
+                for queries, answers, valid_answers, test_answers in zip(batch_queries, batch_answers, batch_valid_answers, batch_test_answers):
+                    train_queries_answers.append((queries, answers))
+                    valid_queries_answers.append((queries, valid_answers))
+                    test_queries_answers.append((queries, test_answers))
+                    i += 1
+                    bar.update(i, {"train": len(answers), "valid": len(valid_answers), "test": len(test_answers)})
 
             param_name_list = get_param_name_list(train_query_structure_func)
             self.train_queries_answers[query_structure_name] = {
