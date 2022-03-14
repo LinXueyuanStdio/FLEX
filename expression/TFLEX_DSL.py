@@ -167,7 +167,7 @@ class SamplingParser(BasicParser):
 
         def _find_entity_no_empty(s: Placeholder, r: Placeholder, t: Placeholder):
             o = random.choice(list(o_srt.keys()))
-            si, rj, tk = o_srt[o]
+            si, rj, tk = random.choice(o_srt[o])
             s.fill(si)
             r.fill(rj)
             t.fill(tk)
@@ -204,7 +204,7 @@ class SamplingParser(BasicParser):
 
         def _find_timestamp_no_empty(s: Placeholder, r: Placeholder, o: Placeholder):
             t = random.choice(list(t_sro.keys()))
-            si, rj, ok = t_sro[t]
+            si, rj, ok = random.choice(t_sro[t])
             s.fill(si)
             r.fill(rj)
             o.fill(ok)
