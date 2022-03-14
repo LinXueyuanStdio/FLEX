@@ -5,9 +5,11 @@
 @description: null
 """
 import random
+from collections import defaultdict
 from math import pi
-from typing import List, Set, Dict, Union
+from typing import List, Set, Union, Tuple
 
+from ComplexTemporalQueryData import build_map_sro2t_and_srt2o
 from .ParamSchema import Placeholder, FixedQuery
 from .symbol import Interpreter
 
@@ -103,8 +105,7 @@ class BasicParser(Interpreter):
 
 class SamplingParser(BasicParser):
     def __init__(self, entity_ids: List[int], relation_ids: List[int], timestamp_ids: List[int],
-                 srt2o: Dict[int, Dict[int, Dict[int, Set[int]]]],  # srt->o | entity,relation,timestamp->entity
-                 sro2t: Dict[int, Dict[int, Dict[int, Set[int]]]],  # sro->t | entity,relation,entity->timestamp
+                 triples_ids: List[Tuple[int, int, int, int]],
                  ):
         # example
         # qe = Pe(e,r,after(Pt(e,r,e)))
@@ -114,8 +115,12 @@ class SamplingParser(BasicParser):
         all_entity_ids = set(entity_ids)
         all_timestamp_ids = set(timestamp_ids)
         max_timestamp_id = max(timestamp_ids)
-        # print(srt2o)
-        # print(sro2t)
+        sro2t, srt2o = build_map_sro2t_and_srt2o(triples_ids)
+        t_sro = defaultdict(set)
+        o_srt = defaultdict(set)
+        for s, r, o, t in triples_ids:
+            t_sro[t].add((s, r, o))
+            o_srt[o].add((s, r, t))
 
         variables = {
             "e": Placeholder("e"),
@@ -161,10 +166,20 @@ class SamplingParser(BasicParser):
             return entities
 
         def find_entity(s: Union[FixedQuery, Placeholder], r: Union[FixedQuery, Placeholder], t: Union[FixedQuery, Placeholder]):
+            if isinstance(s, Placeholder) and isinstance(r, Placeholder) and isinstance(t, Placeholder):
+                return _find_entity_no_empty(s, r, t)
             entities = _find_entity(s, r, t)
             while len(entities) <= 0:
                 entities = _find_entity(s, r, t)
             return entities
+
+        def _find_entity_no_empty(s: Placeholder, r: Placeholder, t: Placeholder):
+            o = random.choice(list(o_srt.keys()))
+            si, rj, tk = o_srt[o]
+            s.fill(si)
+            r.fill(rj)
+            t.fill(tk)
+            return set(srt2o[si][rj][tk])
 
         def _find_entity(s: Union[FixedQuery, Placeholder], r: Union[FixedQuery, Placeholder], t: Union[FixedQuery, Placeholder]):
             if isinstance(s, Placeholder):
@@ -188,10 +203,20 @@ class SamplingParser(BasicParser):
             return answers
 
         def find_timestamp(s: Union[FixedQuery, Placeholder], r: Union[FixedQuery, Placeholder], o: Union[FixedQuery, Placeholder]):
+            if isinstance(s, Placeholder) and isinstance(r, Placeholder) and isinstance(o, Placeholder):
+                return _find_timestamp_no_empty(s, r, o)
             timestamps = _find_timestamp(s, r, o)
             while len(timestamps) <= 0:
                 timestamps = _find_timestamp(s, r, o)
             return timestamps
+
+        def _find_timestamp_no_empty(s: Placeholder, r: Placeholder, o: Placeholder):
+            t = random.choice(list(t_sro.keys()))
+            si, rj, ok = t_sro[t]
+            s.fill(si)
+            r.fill(rj)
+            o.fill(ok)
+            return set(srt2o[si][rj][ok])
 
         def _find_timestamp(s: Union[FixedQuery, Placeholder], r: Union[FixedQuery, Placeholder], o: Union[FixedQuery, Placeholder]):
             if isinstance(s, Placeholder):
