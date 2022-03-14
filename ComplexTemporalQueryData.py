@@ -101,8 +101,8 @@ def read_triple_srot(file_path: Union[str, Path]) -> List[Tuple[str, str, str, s
 
 TYPE_MAPPING_sro_t = Dict[int, Dict[int, Dict[int, Set[int]]]]
 TYPE_MAPPING_srt_o = Dict[int, Dict[int, Dict[int, Set[int]]]]
-TYPE_MAPPING_t_sro = Dict[int, Set[int, int, int]]
-TYPE_MAPPING_o_srt = Dict[int, Set[int, int, int]]
+TYPE_MAPPING_t_sro = Dict[int, Set[Tuple[int, int, int]]]
+TYPE_MAPPING_o_srt = Dict[int, Set[Tuple[int, int, int]]]
 
 
 def build_map_t2sro_and_o2srt(triples_ids: List[Tuple[int, int, int, int]]) -> Tuple[TYPE_MAPPING_t_sro, TYPE_MAPPING_o_srt]:
