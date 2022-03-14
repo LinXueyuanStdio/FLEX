@@ -639,7 +639,7 @@ class ComplexQueryData(TemporalKnowledgeData):
         for query_structure_name in query_structure_name_list:
             print(query_structure_name)
             sample_count = sample_counts[query_structure_name]
-            num_workers = 32
+            num_workers = 16
             sampling_loader = DataLoader(
                 SamplingDataset(train_parser, valid_parser, test_parser, query_structure_name, sample_count),
                 batch_size=512,
