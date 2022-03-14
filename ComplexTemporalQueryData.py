@@ -494,9 +494,9 @@ class ComplexQueryData(TemporalKnowledgeData):
 
         # 2. multi-hop: Pe_aPt, Pe_bPt, etc
         # 2.1 parser
-        train_parser = expression.SamplingParser(self.entities_ids, relations_ids_with_reverse, self.timestamps_ids, train_srt_o, train_sro_t)
-        valid_parser = expression.SamplingParser(self.entities_ids, relations_ids_with_reverse, self.timestamps_ids, valid_srt_o, valid_sro_t)
-        test_parser = expression.SamplingParser(self.entities_ids, relations_ids_with_reverse, self.timestamps_ids, test_srt_o, test_sro_t)
+        train_parser = expression.SamplingParser(self.entities_ids, relations_ids_with_reverse, self.timestamps_ids, train_triples_ids)
+        valid_parser = expression.SamplingParser(self.entities_ids, relations_ids_with_reverse, self.timestamps_ids, train_triples_ids + valid_triples_ids)
+        test_parser = expression.SamplingParser(self.entities_ids, relations_ids_with_reverse, self.timestamps_ids, train_triples_ids + valid_triples_ids + test_triples_ids)
 
         # 2.2. sampling
         # we generate 1p, t-1p according to original train/valid/test triples.
