@@ -158,8 +158,8 @@ class SamplingParser(BasicParser):
             return entities
 
         def find_entity(s: Union[FixedQuery, Placeholder], r: Union[FixedQuery, Placeholder], t: Union[FixedQuery, Placeholder]):
-            if isinstance(s, Placeholder) and isinstance(r, Placeholder) and isinstance(t, Placeholder):
-                return _find_entity_no_empty(s, r, t)
+            # if isinstance(s, Placeholder) and isinstance(r, Placeholder) and isinstance(t, Placeholder):
+            #     return _find_entity_no_empty(s, r, t)
             entities = _find_entity(s, r, t)
             while len(entities) <= 0:
                 entities = _find_entity(s, r, t)
@@ -195,8 +195,8 @@ class SamplingParser(BasicParser):
             return answers
 
         def find_timestamp(s: Union[FixedQuery, Placeholder], r: Union[FixedQuery, Placeholder], o: Union[FixedQuery, Placeholder]):
-            if isinstance(s, Placeholder) and isinstance(r, Placeholder) and isinstance(o, Placeholder):
-                return _find_timestamp_no_empty(s, r, o)
+            # if isinstance(s, Placeholder) and isinstance(r, Placeholder) and isinstance(o, Placeholder):
+            #     return _find_timestamp_no_empty(s, r, o)
             timestamps = _find_timestamp(s, r, o)
             while len(timestamps) <= 0:
                 timestamps = _find_timestamp(s, r, o)
