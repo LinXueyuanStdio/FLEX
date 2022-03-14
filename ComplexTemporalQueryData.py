@@ -101,16 +101,40 @@ def read_triple_srot(file_path: Union[str, Path]) -> List[Tuple[str, str, str, s
 
 TYPE_MAPPING_sro_t = Dict[int, Dict[int, Dict[int, Set[int]]]]
 TYPE_MAPPING_srt_o = Dict[int, Dict[int, Dict[int, Set[int]]]]
+TYPE_MAPPING_t_sro = Dict[int, Set[int, int, int]]
+TYPE_MAPPING_o_srt = Dict[int, Set[int, int, int]]
 
 
-def build_map_sro2t_and_srt2o(triplets: List[Tuple[int, int, int, int]]) -> Tuple[TYPE_MAPPING_sro_t, TYPE_MAPPING_srt_o]:
+def build_map_t2sro_and_o2srt(triples_ids: List[Tuple[int, int, int, int]]) -> Tuple[TYPE_MAPPING_t_sro, TYPE_MAPPING_o_srt]:
+    t_sro = defaultdict(set)
+    o_srt = defaultdict(set)
+    for s, r, o, t in triples_ids:
+        t_sro[t].add((s, r, o))
+        o_srt[o].add((s, r, t))
+    return t_sro, o_srt
+
+
+def build_map_sro2t_and_srt2o(triples_ids: List[Tuple[int, int, int, int]]) -> Tuple[TYPE_MAPPING_sro_t, TYPE_MAPPING_srt_o]:
     """ Function to read the list of tails for the given head and relation pair. """
     sro_t = defaultdict(lambda: defaultdict(lambda: defaultdict(set)))
     srt_o = defaultdict(lambda: defaultdict(lambda: defaultdict(set)))
-    for s, r, o, t in triplets:
+    for s, r, o, t in triples_ids:
         sro_t[s][r][o].add(t)
         srt_o[s][r][t].add(o)
     return sro_t, srt_o
+
+
+def build_map_sro2t_srt2o_t2sro_o2srt(triples_ids: List[Tuple[int, int, int, int]]) -> Tuple[TYPE_MAPPING_sro_t, TYPE_MAPPING_srt_o, TYPE_MAPPING_t_sro, TYPE_MAPPING_o_srt]:
+    sro_t = defaultdict(lambda: defaultdict(lambda: defaultdict(set)))
+    srt_o = defaultdict(lambda: defaultdict(lambda: defaultdict(set)))
+    t_sro = defaultdict(set)
+    o_srt = defaultdict(set)
+    for s, r, o, t in triples_ids:
+        sro_t[s][r][o].add(t)
+        srt_o[s][r][t].add(o)
+        t_sro[t].add((s, r, o))
+        o_srt[o].add((s, r, t))
+    return sro_t, srt_o, t_sro, o_srt
 
 
 class TemporalKnowledgeData(BaseData):
@@ -465,9 +489,9 @@ class ComplexQueryData(TemporalKnowledgeData):
         train_triples_ids = append_reverse(self.train_triples_ids)
         valid_triples_ids = append_reverse(self.valid_triples_ids)
         test_triples_ids = append_reverse(self.test_triples_ids)
-        train_sro_t, train_srt_o = build_map_sro2t_and_srt2o(train_triples_ids)
-        valid_sro_t, valid_srt_o = build_map_sro2t_and_srt2o(train_triples_ids + valid_triples_ids)
-        test_sro_t, test_srt_o = build_map_sro2t_and_srt2o(train_triples_ids + valid_triples_ids + test_triples_ids)
+        train_sro_t, train_srt_o, train_t_sro, train_o_srt = build_map_sro2t_srt2o_t2sro_o2srt(train_triples_ids)
+        valid_sro_t, valid_srt_o, valid_t_sro, valid_o_srt = build_map_sro2t_srt2o_t2sro_o2srt(train_triples_ids + valid_triples_ids)
+        test_sro_t, test_srt_o, test_t_sro, test_o_srt = build_map_sro2t_srt2o_t2sro_o2srt(train_triples_ids + valid_triples_ids + test_triples_ids)
 
         # 1. 1-hop: Pe, Pt
         def build_one_hop(param_name_list: List[str], sro_t):
@@ -494,9 +518,9 @@ class ComplexQueryData(TemporalKnowledgeData):
 
         # 2. multi-hop: Pe_aPt, Pe_bPt, etc
         # 2.1 parser
-        train_parser = expression.SamplingParser(self.entities_ids, relations_ids_with_reverse, self.timestamps_ids, train_triples_ids)
-        valid_parser = expression.SamplingParser(self.entities_ids, relations_ids_with_reverse, self.timestamps_ids, train_triples_ids + valid_triples_ids)
-        test_parser = expression.SamplingParser(self.entities_ids, relations_ids_with_reverse, self.timestamps_ids, train_triples_ids + valid_triples_ids + test_triples_ids)
+        train_parser = expression.SamplingParser(self.entities_ids, relations_ids_with_reverse, self.timestamps_ids, train_sro_t, train_srt_o, train_t_sro, train_o_srt)
+        valid_parser = expression.SamplingParser(self.entities_ids, relations_ids_with_reverse, self.timestamps_ids, valid_sro_t, valid_srt_o, valid_t_sro, valid_o_srt)
+        test_parser = expression.SamplingParser(self.entities_ids, relations_ids_with_reverse, self.timestamps_ids, test_sro_t, test_srt_o, test_t_sro, test_o_srt)
 
         # 2.2. sampling
         # we generate 1p, t-1p according to original train/valid/test triples.

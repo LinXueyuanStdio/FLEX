@@ -5,11 +5,9 @@
 @description: null
 """
 import random
-from collections import defaultdict
 from math import pi
-from typing import List, Set, Union, Tuple
+from typing import List, Set, Union
 
-from ComplexTemporalQueryData import build_map_sro2t_and_srt2o
 from .ParamSchema import Placeholder, FixedQuery
 from .symbol import Interpreter
 
@@ -105,7 +103,7 @@ class BasicParser(Interpreter):
 
 class SamplingParser(BasicParser):
     def __init__(self, entity_ids: List[int], relation_ids: List[int], timestamp_ids: List[int],
-                 triples_ids: List[Tuple[int, int, int, int]],
+                 sro_t, srt_o, t_sro, o_srt,
                  ):
         # example
         # qe = Pe(e,r,after(Pt(e,r,e)))
@@ -115,12 +113,6 @@ class SamplingParser(BasicParser):
         all_entity_ids = set(entity_ids)
         all_timestamp_ids = set(timestamp_ids)
         max_timestamp_id = max(timestamp_ids)
-        sro2t, srt2o = build_map_sro2t_and_srt2o(triples_ids)
-        t_sro = defaultdict(set)
-        o_srt = defaultdict(set)
-        for s, r, o, t in triples_ids:
-            t_sro[t].add((s, r, o))
-            o_srt[o].add((s, r, t))
 
         variables = {
             "e": Placeholder("e"),
@@ -135,20 +127,20 @@ class SamplingParser(BasicParser):
             variables[f"t{t_id}"] = FixedQuery(timestamps={t_id}, is_anchor=True)
 
         def sampling_one_entity():
-            entity = random.choice(list(srt2o.keys()))
+            entity = random.choice(list(srt_o.keys()))
             # print("sampling_entity", entity)
             return entity
 
         def sampling_one_relation_for_s(s: Set[int]):
             si = random.choice(list(s))
-            relation = random.choice(list(srt2o[si].keys()))
+            relation = random.choice(list(srt_o[si].keys()))
             # print("sampling_relation_for_s", relation)
             return relation
 
         def sampling_one_timestamp_for_sr(s: Set[int], r: Set[int]):
             si = random.choice(list(s))
             rj = random.choice(list(r))
-            choices = list(srt2o[si][rj].keys())
+            choices = list(srt_o[si][rj].keys())
             if len(choices) <= 0:
                 return None
             timestamps = random.choice(choices)
@@ -158,7 +150,7 @@ class SamplingParser(BasicParser):
         def sampling_one_entity_for_sr(s: Set[int], r: Set[int]):
             si = random.choice(list(s))
             rj = random.choice(list(r))
-            choices = list(sro2t[si][rj].keys())
+            choices = list(sro_t[si][rj].keys())
             if len(choices) <= 0:
                 return None
             entities = random.choice(choices)
@@ -179,7 +171,7 @@ class SamplingParser(BasicParser):
             s.fill(si)
             r.fill(rj)
             t.fill(tk)
-            return set(srt2o[si][rj][tk])
+            return set(srt_o[si][rj][tk])
 
         def _find_entity(s: Union[FixedQuery, Placeholder], r: Union[FixedQuery, Placeholder], t: Union[FixedQuery, Placeholder]):
             if isinstance(s, Placeholder):
@@ -198,7 +190,7 @@ class SamplingParser(BasicParser):
             for si in s.answers:
                 for rj in r.answers:
                     for tk in t.timestamps:
-                        answers = answers | set(srt2o[si][rj][tk])
+                        answers = answers | set(srt_o[si][rj][tk])
             # print("find_entity", answers)
             return answers
 
@@ -216,7 +208,7 @@ class SamplingParser(BasicParser):
             s.fill(si)
             r.fill(rj)
             o.fill(ok)
-            return set(srt2o[si][rj][ok])
+            return set(sro_t[si][rj][ok])
 
         def _find_timestamp(s: Union[FixedQuery, Placeholder], r: Union[FixedQuery, Placeholder], o: Union[FixedQuery, Placeholder]):
             if isinstance(s, Placeholder):
@@ -235,7 +227,7 @@ class SamplingParser(BasicParser):
             for si in s.answers:
                 for rj in r.answers:
                     for ok in o.answers:
-                        timestamps = timestamps | set(sro2t[si][rj][ok])
+                        timestamps = timestamps | set(sro_t[si][rj][ok])
             # print("find_timestamp", timestamps)
             return timestamps
 
