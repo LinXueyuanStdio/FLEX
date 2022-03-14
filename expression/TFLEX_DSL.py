@@ -8,7 +8,7 @@ import random
 from math import pi
 from typing import List, Set, Union
 
-from .ParamSchema import Placeholder, FixedQuery
+from .ParamSchema import Placeholder, FixedQuery, placeholder2fixed
 from .symbol import Interpreter
 
 query_structures = {
@@ -246,7 +246,77 @@ class SamplingParser(BasicParser):
             "TimeAfter": lambda x: FixedQuery(answers=x.answers, timestamps=set([t for t in timestamp_ids if t > max(x.timestamps)] if len(x.timestamps) > 0 else all_timestamp_ids)),
             "TimeNext": lambda x: FixedQuery(answers=x.answers, timestamps=set([min(t + 1, max_timestamp_id) for t in x.timestamps] if len(x.timestamps) > 0 else all_timestamp_ids)),
         }
-        super().__init__(variables=variables, neural_ops=neural_ops)
+
+        # fast sampling
+        valid_e2i_o_list = [k for k, v in o_srt.items() if len(v) >= 2]
+
+        def fast_e2i(e1, r1, t1, e2, r2, t2):
+            o = random.choice(valid_e2i_o_list)
+            (e1_idx, r1_idx, t1_idx), (e2_idx, r2_idx, t2_idx) = tuple(random.choices(list(o_srt[o]), k=2))
+            e1.fill(e1_idx)
+            r1.fill(r1_idx)
+            t1.fill(t1_idx)
+            e2.fill(e2_idx)
+            r2.fill(r2_idx)
+            t2.fill(t2_idx)
+            placeholders = [e1, r1, t1, e2, r2, t2]
+            return self.eval("e2i")(*placeholder2fixed(placeholders))
+
+        valid_e3i_o_list = [k for k, v in o_srt.items() if len(v) >= 3]
+
+        def fast_e3i(e1, r1, t1, e2, r2, t2, e3, r3, t3):
+            o = random.choice(valid_e3i_o_list)
+            (e1_idx, r1_idx, t1_idx), (e2_idx, r2_idx, t2_idx), (e3_idx, r3_idx, t3_idx) = tuple(random.choices(list(o_srt[o]), k=3))
+            e1.fill(e1_idx)
+            r1.fill(r1_idx)
+            t1.fill(t1_idx)
+            e2.fill(e2_idx)
+            r2.fill(r2_idx)
+            t2.fill(t2_idx)
+            e3.fill(e3_idx)
+            r3.fill(r3_idx)
+            t3.fill(t3_idx)
+            placeholders = [e1, r1, t1, e2, r2, t2, e3, r3, t3]
+            return self.eval("e3i")(*placeholder2fixed(placeholders))
+
+        valid_t2i_t_list = [k for k, v in t_sro.items() if len(v) >= 2]
+
+        def fast_t2i(e1, r1, e2, e3, r2, e4):
+            t = random.choice(valid_t2i_t_list)
+            (e1_idx, r1_idx, e2_idx), (e3_idx, r2_idx, e4_idx) = tuple(random.choices(list(t_sro[t]), k=2))
+            e1.fill(e1_idx)
+            r1.fill(r1_idx)
+            e2.fill(e2_idx)
+            e3.fill(e3_idx)
+            r2.fill(r2_idx)
+            e4.fill(e4_idx)
+            placeholders = [e1, r1, e2, e3, r2, e4]
+            return self.eval("t2i")(*placeholder2fixed(placeholders))
+
+        valid_t3i_t_list = [k for k, v in t_sro.items() if len(v) >= 3]
+
+        def fast_t3i(e1, r1, e2, e3, r2, e4, e5, r3, e6):
+            t = random.choice(valid_t3i_t_list)
+            (e1_idx, r1_idx, e2_idx), (e3_idx, r2_idx, e4_idx), (e5_idx, r3_idx, e6_idx) = tuple(random.choices(list(t_sro[t]), k=3))
+            e1.fill(e1_idx)
+            r1.fill(r1_idx)
+            e2.fill(e2_idx)
+            e3.fill(e3_idx)
+            r2.fill(r2_idx)
+            e4.fill(e4_idx)
+            e5.fill(e5_idx)
+            r3.fill(r3_idx)
+            e6.fill(e6_idx)
+            placeholders = [e1, r1, e2, e3, r2, e4, e5, r3, e6]
+            return self.eval("t3i")(*placeholder2fixed(placeholders))
+
+        self.fast_ops = {
+            "fast_e2i": fast_e2i,
+            "fast_e3i": fast_e3i,
+            "fast_t2i": fast_t2i,
+            "fast_t3i": fast_t3i,
+        }
+        super().__init__(variables=variables, neural_ops=dict(**neural_ops, **self.fast_ops))
         for _, qs in query_structures.items():
             self.eval(qs)
 

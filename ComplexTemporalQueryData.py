@@ -11,7 +11,7 @@ from typing import List, Tuple, Dict, Set, Union, Any
 from torch.utils.data import Dataset, DataLoader
 
 import expression
-from expression.ParamSchema import placeholder2sample, get_param_name_list, get_placeholder_list, placeholder2fixed
+from expression.ParamSchema import placeholder2sample, get_param_name_list, get_placeholder_list, placeholder2fixed, FixedQuery
 from toolbox.data.DataSchema import DatasetCachePath, BaseData
 from toolbox.data.DatasetSchema import RelationalTripletDatasetSchema
 from toolbox.data.functional import read_cache, cache_data
@@ -587,13 +587,25 @@ class ComplexQueryData(TemporalKnowledgeData):
             "Pe_t2u": test_sample_count,  # t-2u, t-up
         }
 
+        def collate_fn(data):
+            queries = [_[0] for _ in data]
+            answers = [_[1] for _ in data]
+            valid_answers = [_[2] for _ in data]
+            test_answers = [_[3] for _ in data]
+            return queries, answers, valid_answers, test_answers
+
         class SamplingDataset(Dataset):
             """
             we use dataloader of PyTorch for sampling.
             """
 
             def __init__(self, train_parser, valid_parser, test_parser, query_structure_name, sample_count):
-                self.train_query_structure_func = train_parser.eval(query_structure_name)
+                if query_structure_name in train_parser.fast_ops.keys():
+                    # fast sampling
+                    # the fast functions make sure that len(answers)>0 in one step.
+                    self.train_query_structure_func = train_parser.eval(f"fast_{query_structure_name}")
+                else:
+                    self.train_query_structure_func = train_parser.eval(query_structure_name)
                 self.valid_query_structure_func = valid_parser.eval(query_structure_name)
                 self.test_query_structure_func = test_parser.eval(query_structure_name)
                 self.query_structure_name = query_structure_name
@@ -605,14 +617,6 @@ class ComplexQueryData(TemporalKnowledgeData):
             def __getitem__(self, idx):
                 return achieve_answers(self.train_query_structure_func, self.valid_query_structure_func, self.test_query_structure_func)
 
-            @staticmethod
-            def collate_fn(data):
-                queries = [_[0] for _ in data]
-                answers = [_[1] for _ in data]
-                valid_answers = [_[2] for _ in data]
-                test_answers = [_[3] for _ in data]
-                return queries, answers, valid_answers, test_answers
-
         def achieve_answers(train_query_structure_func, valid_query_structure_func, test_query_structure_func):
             answers = set()
             valid_answers = set()
@@ -620,7 +624,7 @@ class ComplexQueryData(TemporalKnowledgeData):
             placeholders = None
             while len(answers) <= 0:
                 placeholders = get_placeholder_list(train_query_structure_func)
-                sampling_query_answers = train_query_structure_func(*placeholders)
+                sampling_query_answers: FixedQuery = train_query_structure_func(*placeholders)
                 if sampling_query_answers.answers is not None and len(sampling_query_answers.answers) > 0:
                     answers = sampling_query_answers.answers
                     fixed = placeholder2fixed(placeholders)
@@ -642,11 +646,13 @@ class ComplexQueryData(TemporalKnowledgeData):
             print(query_structure_name)
             sample_count = sample_counts[query_structure_name]
             num_workers = 16
+            if query_structure_name == "e2i":
+                sampling_dataset = SamplingDataset(train_parser, valid_parser, test_parser, query_structure_name, sample_count)
             sampling_loader = DataLoader(
                 SamplingDataset(train_parser, valid_parser, test_parser, query_structure_name, sample_count),
                 batch_size=512,
                 num_workers=num_workers,
-                collate_fn=SamplingDataset.collate_fn
+                collate_fn=collate_fn
             )
             train_query_structure_func = train_parser.eval(query_structure_name)
             # valid_query_structure_func = valid_parser.eval(query_structure_name)
