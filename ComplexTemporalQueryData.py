@@ -542,47 +542,49 @@ class ComplexQueryData(TemporalKnowledgeData):
             "t2u", "Pe_t2u",  # t-2u, t-up
         ]
         # how many samples should we generate?
+        test_sample_count = self.train_triples_count // 25
+        max_sample_count = self.train_triples_count + test_sample_count + test_sample_count
         sample_counts = {
             # entity
-            "Pe2": self.triple_count,
-            "Pe3": self.triple_count,
-            "e2i": self.triple_count,
-            "e3i": self.triple_count,  # 2p, 3p, 2i, 3i
-            "e2i_NPe": self.triple_count // 10,
-            "e2i_PeN": self.triple_count // 10,
-            "Pe_e2i_Pe_NPe": self.triple_count // 10,
-            "e2i_N": self.triple_count // 10,
-            "e3i_N": self.triple_count // 10,  # npi, pni, inp, 2in, 3in
+            "Pe2": max_sample_count,
+            "Pe3": max_sample_count,
+            "e2i": max_sample_count,
+            "e3i": max_sample_count,  # 2p, 3p, 2i, 3i
+            "e2i_NPe": max_sample_count // 8,
+            "e2i_PeN": max_sample_count // 8,
+            "Pe_e2i_Pe_NPe": max_sample_count // 8,
+            "e2i_N": max_sample_count // 8,
+            "e3i_N": max_sample_count // 8,  # npi, pni, inp, 2in, 3in
             # time
-            "Pt_lPe": self.triple_count // 10,
-            "Pt_rPe": self.triple_count // 10,
-            "Pe_Pt": self.triple_count // 10,
-            "Pe_aPt": self.triple_count // 10,
-            "Pe_bPt": self.triple_count // 10,
-            "Pe_nPt": self.triple_count // 10,  # t-1p, t-2p
-            "t2i": self.triple_count,
-            "t3i": self.triple_count,
-            "Pt_le2i": self.triple_count // 10,
-            "Pt_re2i": self.triple_count // 10,
-            "Pe_at2i": self.triple_count // 10,
-            "Pe_bt2i": self.triple_count // 10,
-            "Pe_nt2i": self.triple_count // 10,
-            "between": self.triple_count // 10,  # t-2i, t-3i
-            "t2i_NPt": self.triple_count // 10,
-            "t2i_PtN": self.triple_count // 10,
-            "Pe_t2i_PtPe_NPt": self.triple_count // 10,
-            "t2i_N": self.triple_count // 10,
-            "t3i_N": self.triple_count // 10,  # t-npi, t-pni, t-inp, t-2in, t-3in
+            "Pt_lPe": max_sample_count // 8,
+            "Pt_rPe": max_sample_count // 8,
+            "Pe_Pt": max_sample_count // 8,
+            "Pe_aPt": max_sample_count // 8,
+            "Pe_bPt": max_sample_count // 8,
+            "Pe_nPt": max_sample_count // 8,  # t-1p, t-2p
+            "t2i": max_sample_count,
+            "t3i": max_sample_count,
+            "Pt_le2i": max_sample_count // 8,
+            "Pt_re2i": max_sample_count // 8,
+            "Pe_at2i": max_sample_count // 8,
+            "Pe_bt2i": max_sample_count // 8,
+            "Pe_nt2i": max_sample_count // 8,
+            "between": max_sample_count // 8,  # t-2i, t-3i
+            "t2i_NPt": max_sample_count // 8,
+            "t2i_PtN": max_sample_count // 8,
+            "Pe_t2i_PtPe_NPt": max_sample_count // 8,
+            "t2i_N": max_sample_count // 8,
+            "t3i_N": max_sample_count // 8,  # t-npi, t-pni, t-inp, t-2in, t-3in
             # entity
-            "e2i_Pe": self.triple_count // 100,
-            "Pe_e2i": self.triple_count // 100,  # pi, ip
-            "e2u": self.triple_count // 100,
-            "Pe_e2u": self.triple_count // 100,  # 2u, up
+            "e2i_Pe": test_sample_count,
+            "Pe_e2i": test_sample_count,  # pi, ip
+            "e2u": test_sample_count,
+            "Pe_e2u": test_sample_count,  # 2u, up
             # time
-            "t2i_Pe": self.triple_count // 100,
-            "Pe_t2i": self.triple_count // 100,  # t-pi, t-ip
-            "t2u": self.triple_count // 100,
-            "Pe_t2u": self.triple_count // 100,  # t-2u, t-up
+            "t2i_Pe": test_sample_count,
+            "Pe_t2i": test_sample_count,  # t-pi, t-ip
+            "t2u": test_sample_count,
+            "Pe_t2u": test_sample_count,  # t-2u, t-up
         }
 
         class SamplingDataset(Dataset):
