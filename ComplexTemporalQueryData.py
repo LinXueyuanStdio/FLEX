@@ -102,14 +102,8 @@ def read_triple_srot(file_path: Union[str, Path]) -> List[Tuple[str, str, str, s
 
 TYPE_MAPPING_sro_t = Dict[int, Dict[int, Dict[int, Set[int]]]]
 TYPE_MAPPING_srt_o = Dict[int, Dict[int, Dict[int, Set[int]]]]
-TYPE_MAPPING_ors_t = Dict[int, Dict[int, Dict[int, Set[int]]]]
-TYPE_MAPPING_trs_o = Dict[int, Dict[int, Dict[int, Set[int]]]]
-TYPE_MAPPING_sor_t = Dict[int, Dict[int, Dict[int, Set[int]]]]
-TYPE_MAPPING_str_o = Dict[int, Dict[int, Dict[int, Set[int]]]]
 TYPE_MAPPING_t_sro = Dict[int, Set[Tuple[int, int, int]]]
 TYPE_MAPPING_o_srt = Dict[int, Set[Tuple[int, int, int]]]
-TYPE_MAPPING_s_rot = Dict[int, Set[Tuple[int, int, int]]]
-TYPE_MAPPING_r_sot = Dict[int, Set[Tuple[int, int, int]]]
 
 
 def build_map_t2sro_and_o2srt(triples_ids: List[Tuple[int, int, int, int]]) -> Tuple[TYPE_MAPPING_t_sro, TYPE_MAPPING_o_srt]:
@@ -660,7 +654,6 @@ class ComplexQueryData(TemporalKnowledgeData):
             "t2u", "Pe_t2u",  # t-2u, t-up
         ]
         # how many samples should we generate?
-        # self.train_triples_count = 8 * 25  # TODO remove it
         test_sample_count = self.train_triples_count // 25
         max_sample_count = self.train_triples_count + test_sample_count + test_sample_count
         sample_counts = {
