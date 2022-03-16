@@ -76,16 +76,6 @@ class TemporalKnowledgeDatasetCachePath(DatasetCachePath):
         self.cache_relation2idx_path = self.cache_path / 'relation2idx.pkl'
         self.cache_timestamps2idx_path = self.cache_path / 'timestamp2idx.pkl'
 
-        # self.cache_sro_t_path = self.cache_path / 'sro_t.pkl'
-        # self.cache_sro_t_train_path = self.cache_path / 'sro_t_train.pkl'
-        # self.cache_sro_t_valid_path = self.cache_path / 'sro_t_valid.pkl'
-        # self.cache_sro_t_test_path = self.cache_path / 'sro_t_test.pkl'
-        #
-        # self.cache_srt_o_path = self.cache_path / 'srt_o.pkl'
-        # self.cache_srt_o_train_path = self.cache_path / 'srt_o_train.pkl'
-        # self.cache_srt_o_valid_path = self.cache_path / 'srt_o_valid.pkl'
-        # self.cache_srt_o_test_path = self.cache_path / 'srt_o_test.pkl'
-
 
 def read_triple_srot(file_path: Union[str, Path]) -> List[Tuple[str, str, str, str]]:
     """
@@ -278,16 +268,6 @@ class TemporalKnowledgeData(BaseData):
         self.timestamp2idx: Dict[str, int] = {}
         self.idx2timestamp: Dict[int, str] = {}
 
-        self.sro_t: Dict[Tuple[int, int, int], Set[int]] = defaultdict(set)
-        self.sro_t_train: Dict[Tuple[int, int, int], Set[int]] = defaultdict(set)
-        self.sro_t_valid: Dict[Tuple[int, int, int], Set[int]] = defaultdict(set)
-        self.sro_t_test: Dict[Tuple[int, int, int], Set[int]] = defaultdict(set)
-
-        self.srt_o: Dict[Tuple[int, int, int], Set[int]] = defaultdict(set)
-        self.srt_o_train: Dict[Tuple[int, int, int], Set[int]] = defaultdict(set)
-        self.srt_o_valid: Dict[Tuple[int, int, int], Set[int]] = defaultdict(set)
-        self.srt_o_test: Dict[Tuple[int, int, int], Set[int]] = defaultdict(set)
-
         # meta
         self.entity_count = 0
         self.relation_count = 0
@@ -320,8 +300,6 @@ class TemporalKnowledgeData(BaseData):
         self.transform_relation_ids()
         self.transform_timestamp_ids()
 
-        self.transform_mapping()
-
     def transform_entities_relations_timestamps(self):
         """ Function to read the entities. """
         entities: Set[str] = set()
@@ -348,12 +326,15 @@ class TemporalKnowledgeData(BaseData):
 
     def transform_mappings(self):
         """ Function to generate the mapping from string name to integer ids. """
-        self.entity2idx = {v: k for k, v in enumerate(self.all_entities)}
-        self.idx2entity = {v: k for k, v in self.entity2idx.items()}
-        self.relation2idx = {v: k for k, v in enumerate(self.all_relations)}
-        self.idx2relation = {v: k for k, v in self.relation2idx.items()}
-        self.timestamp2idx = {v: k for k, v in enumerate(self.all_timestamps)}
-        self.idx2timestamp = {v: k for k, v in self.timestamp2idx.items()}
+        for k, v in enumerate(self.all_entities):
+            self.entity2idx[v] = k
+            self.idx2entity[k] = v
+        for k, v in enumerate(self.all_relations):
+            self.relation2idx[v] = k
+            self.idx2relation[k] = v
+        for k, v in enumerate(self.all_timestamps):
+            self.timestamp2idx[v] = k
+            self.idx2timestamp[k] = v
 
     def transform_all_triplets_ids(self):
         entity2idx = self.entity2idx
@@ -396,13 +377,6 @@ class TemporalKnowledgeData(BaseData):
             # i += 1
             # bar.update(i, [("relation", r.split("/")[-1])])
 
-    def transform_mapping(self):
-        """ Function to read the list of tails for the given head and relation pair. """
-        self.sro_t, self.srt_o = build_map_sro2t_and_srt2o(self.all_triples_ids)
-        self.sro_t_train, self.srt_o_train = build_map_sro2t_and_srt2o(self.train_triples_ids)
-        self.sro_t_valid, self.srt_o_valid = build_map_sro2t_and_srt2o(self.valid_triples_ids)
-        self.sro_t_test, self.srt_o_test = build_map_sro2t_and_srt2o(self.test_triples_ids)
-
     def cache_all_data(self):
         """Function to cache the prepared dataset in the memory"""
         cache_data(self.all_triples, self.cache_path.cache_all_triples_path)
@@ -428,16 +402,6 @@ class TemporalKnowledgeData(BaseData):
         cache_data(self.relation2idx, self.cache_path.cache_relation2idx_path)
         cache_data(self.entity2idx, self.cache_path.cache_entity2idx_path)
         cache_data(self.timestamp2idx, self.cache_path.cache_timestamps2idx_path)
-
-        # pickle unable to save defaultdict
-        # cache_data(self.sro_t, self.cache_path.cache_sro_t_path)
-        # cache_data(self.srt_o, self.cache_path.cache_srt_o_path)
-        # cache_data(self.sro_t_train, self.cache_path.cache_sro_t_train_path)
-        # cache_data(self.srt_o_train, self.cache_path.cache_srt_o_train_path)
-        # cache_data(self.sro_t_valid, self.cache_path.cache_sro_t_valid_path)
-        # cache_data(self.srt_o_valid, self.cache_path.cache_srt_o_valid_path)
-        # cache_data(self.sro_t_test, self.cache_path.cache_sro_t_test_path)
-        # cache_data(self.srt_o_test, self.cache_path.cache_srt_o_test_path)
 
         cache_data(self.meta(), self.cache_path.cache_metadata_path)
 
