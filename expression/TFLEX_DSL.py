@@ -183,7 +183,7 @@ class SamplingParser(BasicParser):
                 t.fill(tk)
                 t = FixedQuery(timestamps={t.idx}, is_anchor=True)
             elif s_is_missing and r_is_missing and not t_is_missing:
-                choices = list(t.answers)
+                choices = list(t.timestamps)
                 if len(choices) <= 0:
                     return set()
                 tk = random.choice(choices)
@@ -202,7 +202,7 @@ class SamplingParser(BasicParser):
                 s.fill(si)
                 s = FixedQuery(answers={s.idx}, is_anchor=True)
             elif s_is_missing and not r_is_missing and not t_is_missing:
-                choices = list(t.answers)
+                choices = list(t.timestamps)
                 if len(choices) <= 0:
                     return set()
                 tk = random.choice(choices)
@@ -224,7 +224,7 @@ class SamplingParser(BasicParser):
                     return set()
                 si = random.choice(choices)
 
-                choices = list(t.answers)
+                choices = list(t.timestamps)
                 if len(choices) <= 0:
                     return set()
                 tk = random.choice(choices)
