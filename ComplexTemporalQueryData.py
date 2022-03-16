@@ -6,6 +6,7 @@
 """
 from collections import defaultdict
 from pathlib import Path
+from pprint import pformat
 from typing import List, Tuple, Dict, Set, Union, Any
 
 from torch.utils.data import Dataset, DataLoader
@@ -884,5 +885,5 @@ class ComplexQueryData(TemporalKnowledgeData):
         # dump key information
         dump = TemporalKnowledgeData.dump(self)
         for k, v in self.query_meta.items():
-            dump.insert(len(dump) - 3, f"{k} : {v}")
+            dump.insert(len(dump) - 2, f"{k} : {pformat(v)}")
         return dump
