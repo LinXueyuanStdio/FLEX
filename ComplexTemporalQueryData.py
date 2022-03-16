@@ -742,7 +742,7 @@ class ComplexQueryData(TemporalKnowledgeData):
             valid_answers = set()
             test_answers = set()
             placeholders = None
-            conflict_count = -1
+            # conflict_count = -1
             while len(answers) <= 0 or (len(answers) > 0 and (len(valid_answers) <= 0 or len(test_answers) <= 0)):
                 # len(answers) > 0 and (len(valid_answers) <= 0 or len(test_answers) <= 0)
                 # for queries containing negation, test may has no answers while train has lots of answers.
@@ -763,9 +763,9 @@ class ComplexQueryData(TemporalKnowledgeData):
                     answers = set()
                     valid_answers = set()
                     test_answers = set()
-                conflict_count += 1
-            if conflict_count > 0:
-                print("conflict_count=", conflict_count)
+            #     conflict_count += 1
+            # if conflict_count > 0:
+            #     print("conflict_count=", conflict_count)
             queries = placeholder2sample(placeholders)
             return queries, answers, valid_answers, test_answers
 
