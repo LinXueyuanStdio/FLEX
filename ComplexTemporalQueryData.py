@@ -624,7 +624,7 @@ class ComplexQueryData(TemporalKnowledgeData):
             valid_answers = set()
             test_answers = set()
             placeholders = None
-            conflict_count = 0
+            conflict_count = -1
             while len(answers) <= 0:
                 placeholders = get_placeholder_list(train_query_structure_func)
                 sampling_query_answers: FixedQuery = train_query_structure_func(*placeholders)
@@ -643,7 +643,7 @@ class ComplexQueryData(TemporalKnowledgeData):
                     valid_answers = set()
                     test_answers = set()
                 conflict_count += 1
-            if conflict_count > 1:
+            if conflict_count > 0:
                 print("conflict_count=", conflict_count)
             queries = placeholder2sample(placeholders)
             return queries, answers, valid_answers, test_answers

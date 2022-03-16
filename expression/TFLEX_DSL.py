@@ -266,6 +266,7 @@ class SamplingParser(BasicParser):
         # print(sorted(valid_e2i_v_list)[-10:])
 
         def fast_e2i(e1, r1, t1, e2, r2, t2):
+            print("fast_e2i")
             o = random.choice(valid_e2i_o_list)
             (e1_idx, r1_idx, t1_idx), (e2_idx, r2_idx, t2_idx) = tuple(random.sample(list(o_srt[o]), k=2))
             e1.fill(e1_idx)
@@ -275,7 +276,9 @@ class SamplingParser(BasicParser):
             r2.fill(r2_idx)
             t2.fill(t2_idx)
             placeholders = [e1, r1, t1, e2, r2, t2]
-            return self.eval("e2i")(*placeholder2fixed(placeholders))
+            q = self.eval("e2i")(*placeholder2fixed(placeholders))
+            print(len(q))
+            return q
 
         valid_e3i_o_list = [k for k, v in o_srt.items() if len(v) >= 3]
         # valid_e3i_v_list = [len(v) for k, v in o_srt.items() if len(v) >= 3]
