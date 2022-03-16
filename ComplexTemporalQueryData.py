@@ -101,8 +101,14 @@ def read_triple_srot(file_path: Union[str, Path]) -> List[Tuple[str, str, str, s
 
 TYPE_MAPPING_sro_t = Dict[int, Dict[int, Dict[int, Set[int]]]]
 TYPE_MAPPING_srt_o = Dict[int, Dict[int, Dict[int, Set[int]]]]
+TYPE_MAPPING_ors_t = Dict[int, Dict[int, Dict[int, Set[int]]]]
+TYPE_MAPPING_trs_o = Dict[int, Dict[int, Dict[int, Set[int]]]]
+TYPE_MAPPING_sor_t = Dict[int, Dict[int, Dict[int, Set[int]]]]
+TYPE_MAPPING_str_o = Dict[int, Dict[int, Dict[int, Set[int]]]]
 TYPE_MAPPING_t_sro = Dict[int, Set[Tuple[int, int, int]]]
 TYPE_MAPPING_o_srt = Dict[int, Set[Tuple[int, int, int]]]
+TYPE_MAPPING_s_rot = Dict[int, Set[Tuple[int, int, int]]]
+TYPE_MAPPING_r_sot = Dict[int, Set[Tuple[int, int, int]]]
 
 
 def build_map_t2sro_and_o2srt(triples_ids: List[Tuple[int, int, int, int]]) -> Tuple[TYPE_MAPPING_t_sro, TYPE_MAPPING_o_srt]:
@@ -124,17 +130,73 @@ def build_map_sro2t_and_srt2o(triples_ids: List[Tuple[int, int, int, int]]) -> T
     return sro_t, srt_o
 
 
-def build_map_sro2t_srt2o_t2sro_o2srt(triples_ids: List[Tuple[int, int, int, int]]) -> Tuple[TYPE_MAPPING_sro_t, TYPE_MAPPING_srt_o, TYPE_MAPPING_t_sro, TYPE_MAPPING_o_srt]:
+def build_mapping(triples_ids: List[Tuple[int, int, int, int]]):
     sro_t = defaultdict(lambda: defaultdict(lambda: defaultdict(set)))
+    sor_t = defaultdict(lambda: defaultdict(lambda: defaultdict(set)))
     srt_o = defaultdict(lambda: defaultdict(lambda: defaultdict(set)))
+    str_o = defaultdict(lambda: defaultdict(lambda: defaultdict(set)))
+    sot_r = defaultdict(lambda: defaultdict(lambda: defaultdict(set)))
+    sto_r = defaultdict(lambda: defaultdict(lambda: defaultdict(set)))
+
+    ors_t = defaultdict(lambda: defaultdict(lambda: defaultdict(set)))
+    osr_t = defaultdict(lambda: defaultdict(lambda: defaultdict(set)))
+    ort_s = defaultdict(lambda: defaultdict(lambda: defaultdict(set)))
+    otr_s = defaultdict(lambda: defaultdict(lambda: defaultdict(set)))
+    ost_r = defaultdict(lambda: defaultdict(lambda: defaultdict(set)))
+    ots_r = defaultdict(lambda: defaultdict(lambda: defaultdict(set)))
+
+    trs_o = defaultdict(lambda: defaultdict(lambda: defaultdict(set)))
+    tsr_o = defaultdict(lambda: defaultdict(lambda: defaultdict(set)))
+    tro_s = defaultdict(lambda: defaultdict(lambda: defaultdict(set)))
+    tor_s = defaultdict(lambda: defaultdict(lambda: defaultdict(set)))
+    tso_r = defaultdict(lambda: defaultdict(lambda: defaultdict(set)))
+    tos_r = defaultdict(lambda: defaultdict(lambda: defaultdict(set)))
+
+    rts_o = defaultdict(lambda: defaultdict(lambda: defaultdict(set)))
+    rst_o = defaultdict(lambda: defaultdict(lambda: defaultdict(set)))
+    rto_s = defaultdict(lambda: defaultdict(lambda: defaultdict(set)))
+    rot_s = defaultdict(lambda: defaultdict(lambda: defaultdict(set)))
+    rso_t = defaultdict(lambda: defaultdict(lambda: defaultdict(set)))
+    ros_t = defaultdict(lambda: defaultdict(lambda: defaultdict(set)))
+
     t_sro = defaultdict(set)
     o_srt = defaultdict(set)
+    s_rot = defaultdict(set)
+    r_sot = defaultdict(set)
     for s, r, o, t in triples_ids:
         sro_t[s][r][o].add(t)
+        sor_t[s][o][r].add(t)
         srt_o[s][r][t].add(o)
+        str_o[s][t][r].add(o)
+        sot_r[s][o][t].add(r)
+        sto_r[s][t][o].add(r)
+        ors_t[o][r][s].add(t)
+        osr_t[o][s][r].add(t)
+        ort_s[o][r][t].add(s)
+        otr_s[o][t][r].add(s)
+        ost_r[o][s][t].add(r)
+        ots_r[o][t][s].add(r)
+        trs_o[t][r][s].add(o)
+        tsr_o[t][s][r].add(o)
+        tro_s[t][r][o].add(s)
+        tor_s[t][o][r].add(s)
+        tso_r[t][s][o].add(r)
+        tos_r[t][o][s].add(r)
+        rts_o[r][t][s].add(o)
+        rst_o[r][s][t].add(o)
+        rto_s[r][t][o].add(s)
+        rot_s[r][o][t].add(s)
+        rso_t[r][s][o].add(t)
+        ros_t[r][o][s].add(t)
         t_sro[t].add((s, r, o))
         o_srt[o].add((s, r, t))
-    return sro_t, srt_o, t_sro, o_srt
+        s_rot[s].add((r, t, o))
+        r_sot[r].add((s, o, t))
+    return sro_t, sor_t, srt_o, str_o, sot_r, sto_r, \
+           ors_t, osr_t, ort_s, otr_s, ost_r, ots_r, \
+           trs_o, tsr_o, tro_s, tor_s, tso_r, tos_r, \
+           rts_o, rst_o, rto_s, rot_s, rso_t, ros_t, \
+           t_sro, o_srt, s_rot, r_sot
 
 
 def build_not_t2sro_o2srt(entities_ids: List[int], timestamps_ids: List[int],
@@ -507,9 +569,22 @@ class ComplexQueryData(TemporalKnowledgeData):
         train_triples_ids = append_reverse(self.train_triples_ids)
         valid_triples_ids = append_reverse(self.valid_triples_ids)
         test_triples_ids = append_reverse(self.test_triples_ids)
-        train_sro_t, train_srt_o, train_t_sro, train_o_srt = build_map_sro2t_srt2o_t2sro_o2srt(train_triples_ids)
-        valid_sro_t, valid_srt_o, valid_t_sro, valid_o_srt = build_map_sro2t_srt2o_t2sro_o2srt(train_triples_ids + valid_triples_ids)
-        test_sro_t, test_srt_o, test_t_sro, test_o_srt = build_map_sro2t_srt2o_t2sro_o2srt(train_triples_ids + valid_triples_ids + test_triples_ids)
+        train_sro_t, train_sor_t, train_srt_o, train_str_o, train_sot_r, train_sto_r, \
+        train_ors_t, train_osr_t, train_ort_s, train_otr_s, train_ost_r, train_ots_r, \
+        train_trs_o, train_tsr_o, train_tro_s, train_tor_s, train_tso_r, train_tos_r, \
+        train_rts_o, train_rst_o, train_rto_s, train_rot_s, train_rso_t, train_ros_t, \
+        train_t_sro, train_o_srt, train_s_rot, train_r_sot = build_mapping(train_triples_ids)
+        valid_sro_t, valid_sor_t, valid_srt_o, valid_str_o, valid_sot_r, valid_sto_r, \
+        valid_ors_t, valid_osr_t, valid_ort_s, valid_otr_s, valid_ost_r, valid_ots_r, \
+        valid_trs_o, valid_tsr_o, valid_tro_s, valid_tor_s, valid_tso_r, valid_tos_r, \
+        valid_rts_o, valid_rst_o, valid_rto_s, valid_rot_s, valid_rso_t, valid_ros_t, \
+        valid_t_sro, valid_o_srt, valid_s_rot, valid_r_sot = build_mapping(train_triples_ids + valid_triples_ids)
+        test_sro_t, test_sor_t, test_srt_o, test_str_o, test_sot_r, test_sto_r, \
+        test_ors_t, test_osr_t, test_ort_s, test_otr_s, test_ost_r, test_ots_r, \
+        test_trs_o, test_tsr_o, test_tro_s, test_tor_s, test_tso_r, test_tos_r, \
+        test_rts_o, test_rst_o, test_rto_s, test_rot_s, test_rso_t, test_ros_t, \
+        test_t_sro, test_o_srt, test_s_rot, test_r_sot = build_mapping(train_triples_ids + valid_triples_ids + test_triples_ids)
+
         # train_not_t_sro, train_not_o_srt = build_not_t2sro_o2srt(self.entities_ids, self.timestamps_ids, train_sro_t, train_srt_o)
         # valid_not_t_sro, valid_not_o_srt = build_not_t2sro_o2srt(self.entities_ids, self.timestamps_ids, valid_sro_t, valid_srt_o)
         # test_not_t_sro, test_not_o_srt = build_not_t2sro_o2srt(self.entities_ids, self.timestamps_ids, test_sro_t, test_srt_o)
@@ -539,9 +614,30 @@ class ComplexQueryData(TemporalKnowledgeData):
 
         # 2. multi-hop: Pe_aPt, Pe_bPt, etc
         # 2.1 parser
-        train_parser = expression.SamplingParser(self.entities_ids, relations_ids_with_reverse, self.timestamps_ids, train_sro_t, train_srt_o, train_t_sro, train_o_srt) #, train_not_t_sro, train_not_o_srt)
-        valid_parser = expression.SamplingParser(self.entities_ids, relations_ids_with_reverse, self.timestamps_ids, valid_sro_t, valid_srt_o, valid_t_sro, valid_o_srt) #, valid_not_t_sro, valid_not_o_srt)
-        test_parser = expression.SamplingParser(self.entities_ids, relations_ids_with_reverse, self.timestamps_ids, test_sro_t, test_srt_o, test_t_sro, test_o_srt) #, test_not_t_sro, test_not_o_srt)
+        train_parser = expression.SamplingParser(self.entities_ids, relations_ids_with_reverse, self.timestamps_ids,
+                                                 train_sro_t, train_sor_t, train_srt_o, train_str_o, train_sot_r, train_sto_r,
+                                                 train_ors_t, train_osr_t, train_ort_s, train_otr_s, train_ost_r, train_ots_r,
+                                                 train_trs_o, train_tsr_o, train_tro_s, train_tor_s, train_tso_r, train_tos_r,
+                                                 train_rts_o, train_rst_o, train_rto_s, train_rot_s, train_rso_t, train_ros_t,
+                                                 train_t_sro, train_o_srt, train_s_rot, train_r_sot
+                                                 # , train_not_t_sro, train_not_o_srt)
+                                                 )
+        valid_parser = expression.SamplingParser(self.entities_ids, relations_ids_with_reverse, self.timestamps_ids,
+                                                 valid_sro_t, valid_sor_t, valid_srt_o, valid_str_o, valid_sot_r, valid_sto_r,
+                                                 valid_ors_t, valid_osr_t, valid_ort_s, valid_otr_s, valid_ost_r, valid_ots_r,
+                                                 valid_trs_o, valid_tsr_o, valid_tro_s, valid_tor_s, valid_tso_r, valid_tos_r,
+                                                 valid_rts_o, valid_rst_o, valid_rto_s, valid_rot_s, valid_rso_t, valid_ros_t,
+                                                 valid_t_sro, valid_o_srt, valid_s_rot, valid_r_sot
+                                                 # , valid_not_t_sro, valid_not_o_srt)
+                                                 )
+        test_parser = expression.SamplingParser(self.entities_ids, relations_ids_with_reverse, self.timestamps_ids,
+                                                test_sro_t, test_sor_t, test_srt_o, test_str_o, test_sot_r, test_sto_r,
+                                                test_ors_t, test_osr_t, test_ort_s, test_otr_s, test_ost_r, test_ots_r,
+                                                test_trs_o, test_tsr_o, test_tro_s, test_tor_s, test_tso_r, test_tos_r,
+                                                test_rts_o, test_rst_o, test_rto_s, test_rot_s, test_rso_t, test_ros_t,
+                                                test_t_sro, test_o_srt, test_s_rot, test_r_sot
+                                                # , test_not_t_sro, test_not_o_srt)
+                                                )
 
         # 2.2. sampling
         # we generate 1p, t-1p according to original train/valid/test triples.

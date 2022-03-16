@@ -103,7 +103,11 @@ class BasicParser(Interpreter):
 
 class SamplingParser(BasicParser):
     def __init__(self, entity_ids: List[int], relation_ids: List[int], timestamp_ids: List[int],
-                 sro_t, srt_o, t_sro, o_srt,# not_t_sro, not_o_srt
+                 sro_t, sor_t, srt_o, str_o, sot_r, sto_r,
+                 ors_t, osr_t, ort_s, otr_s, ost_r, ots_r,
+                 trs_o, tsr_o, tro_s, tor_s, tso_r, tos_r,
+                 rts_o, rst_o, rto_s, rot_s, rso_t, ros_t,
+                 t_sro, o_srt, s_rot, r_sot  # not_t_sro, not_o_srt
                  ):
         # example
         # qe = Pe(e,r,after(Pt(e,r,e)))
@@ -158,24 +162,77 @@ class SamplingParser(BasicParser):
             return entities
 
         def find_entity(s: Union[FixedQuery, Placeholder], r: Union[FixedQuery, Placeholder], t: Union[FixedQuery, Placeholder]):
-            if isinstance(s, Placeholder):
-                s.fill(sampling_one_entity())
+            s_is_missing, r_is_missing, t_is_missing = isinstance(s, Placeholder), isinstance(r, Placeholder), isinstance(t, Placeholder)
+            if s_is_missing and r_is_missing and t_is_missing:
+                si = random.choice(list(srt_o.keys()))
+                s.fill(si)
                 s = FixedQuery(answers={s.idx}, is_anchor=True)
-            if len(s) <= 0:
-                return set()
-            if isinstance(r, Placeholder):
-                r.fill(sampling_one_relation_for_s(s.answers))
+
+                rj = random.choice(list(srt_o[si].keys()))
+                r.fill(rj)
                 r = FixedQuery(answers={r.idx}, is_anchor=True)
-            if len(r) <= 0:
-                return set()
-            if isinstance(t, Placeholder):
-                timestamps = sampling_one_timestamp_for_sr(s.answers, r.answers)
-                if timestamps is None:
-                    return set()
-                t.fill(timestamps)
+
+                tk = random.choice(list(srt_o[si][rj].keys()))
+                t.fill(tk)
                 t = FixedQuery(timestamps={t.idx}, is_anchor=True)
-            if len(t) <= 0:
-                return set()
+            elif not s_is_missing and r_is_missing and t_is_missing:
+                si = random.choice(list(s.answers))
+                rj = random.choice(list(srt_o[si].keys()))
+                r.fill(rj)
+                r = FixedQuery(answers={r.idx}, is_anchor=True)
+
+                tk = random.choice(list(srt_o[si][rj].keys()))
+                t.fill(tk)
+                t = FixedQuery(timestamps={t.idx}, is_anchor=True)
+            elif s_is_missing and not r_is_missing and t_is_missing:
+                rj = random.choice(list(r.answers))
+
+                si = random.choice(list(rst_o[rj].keys()))
+                s.fill(si)
+                s = FixedQuery(answers={s.idx}, is_anchor=True)
+
+                tk = random.choice(list(rst_o[rj][si].keys()))
+                t.fill(tk)
+                t = FixedQuery(timestamps={t.idx}, is_anchor=True)
+            elif s_is_missing and r_is_missing and not t_is_missing:
+                tk = random.choice(list(t.answers))
+
+                rj = random.choice(list(trs_o[tk].keys()))
+                r.fill(rj)
+                r = FixedQuery(answers={r.idx}, is_anchor=True)
+
+                si = random.choice(list(trs_o[tk][rj].keys()))
+                s.fill(si)
+                s = FixedQuery(answers={s.idx}, is_anchor=True)
+            elif s_is_missing and not r_is_missing and not t_is_missing:
+                tk = random.choice(list(t.answers))
+                rj = random.choice(list(r.answers))
+
+                choices = list(trs_o[tk][rj].keys())
+                if len(choices) <= 0:
+                    return set()
+                si = random.choice(choices)
+                s.fill(si)
+                s = FixedQuery(answers={s.idx}, is_anchor=True)
+            elif not s_is_missing and r_is_missing and not t_is_missing:
+                si = random.choice(list(s.answers))
+                tk = random.choice(list(t.answers))
+                choices = list(str_o[si][tk].keys())
+                if len(choices) <= 0:
+                    return set()
+                rj = random.choice(choices)
+                r.fill(rj)
+                r = FixedQuery(answers={r.idx}, is_anchor=True)
+            elif not s_is_missing and not r_is_missing and t_is_missing:
+                si = random.choice(list(s.answers))
+                rj = random.choice(list(r.answers))
+                choices = list(srt_o[si][rj].keys())
+                if len(choices) <= 0:
+                    return set()
+                tk = random.choice(choices)
+                t.fill(tk)
+                t = FixedQuery(timestamps={t.idx}, is_anchor=True)
+
             answers = set()
             for si in s.answers:
                 for rj in r.answers:
@@ -315,6 +372,11 @@ class SamplingParser(BasicParser):
             q = fast_e2i(e2, r2, t1, e3, r3, t2)
             return self.fast_function("Pt")(e1, r1, q)
 
+        def fast_t2i_NPt(e1, r1, e2, r2, t1, e3, r3, t2):
+            # TODO
+            q = fast_e2i(e2, r2, t1, e3, r3, t2)
+            return self.fast_function("Pt")(e1, r1, q)
+
         self.fast_ops = {
             "fast_e2i": fast_e2i,
             "fast_e3i": fast_e3i,
@@ -322,6 +384,7 @@ class SamplingParser(BasicParser):
             "fast_t3i": fast_t3i,
             "fast_Pt_le2i": fast_Pt_le2i,
             "fast_Pt_re2i": fast_Pt_re2i,
+            "fast_t2i_NPt": fast_t2i_NPt,
         }
         super().__init__(variables=variables, neural_ops=dict(**neural_ops, **self.fast_ops))
         for _, qs in query_structures.items():
