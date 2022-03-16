@@ -135,15 +135,15 @@ class SamplingParser(BasicParser):
             if s_is_missing and r_is_missing and t_is_missing:
                 si = random.choice(list(srt_o.keys()))
                 s.fill(si)
-                s = FixedQuery(answers={s.idx}, is_anchor=True)
+                s = s.to_fixed_query()
 
                 rj = random.choice(list(srt_o[si].keys()))
                 r.fill(rj)
-                r = FixedQuery(answers={r.idx}, is_anchor=True)
+                r = r.to_fixed_query()
 
                 tk = random.choice(list(srt_o[si][rj].keys()))
                 t.fill(tk)
-                t = FixedQuery(timestamps={t.idx}, is_anchor=True)
+                t = t.to_fixed_query()
             elif not s_is_missing and r_is_missing and t_is_missing:
                 choices = list(s.answers)
                 if len(choices) <= 0:
@@ -155,14 +155,14 @@ class SamplingParser(BasicParser):
                     return set()
                 rj = random.choice(choices)
                 r.fill(rj)
-                r = FixedQuery(answers={r.idx}, is_anchor=True)
+                r = r.to_fixed_query()
 
                 choices = list(srt_o[si][rj].keys())
                 if len(choices) <= 0:
                     return set()
                 tk = random.choice(choices)
                 t.fill(tk)
-                t = FixedQuery(timestamps={t.idx}, is_anchor=True)
+                t = t.to_fixed_query()
             elif s_is_missing and not r_is_missing and t_is_missing:
                 choices = list(r.answers)
                 if len(choices) <= 0:
@@ -174,14 +174,14 @@ class SamplingParser(BasicParser):
                     return set()
                 si = random.choice(choices)
                 s.fill(si)
-                s = FixedQuery(answers={s.idx}, is_anchor=True)
+                s = s.to_fixed_query()
 
                 choices = list(rst_o[rj][si].keys())
                 if len(choices) <= 0:
                     return set()
                 tk = random.choice(choices)
                 t.fill(tk)
-                t = FixedQuery(timestamps={t.idx}, is_anchor=True)
+                t = t.to_fixed_query()
             elif s_is_missing and r_is_missing and not t_is_missing:
                 choices = list(t.timestamps)
                 if len(choices) <= 0:
@@ -193,14 +193,14 @@ class SamplingParser(BasicParser):
                     return set()
                 rj = random.choice(choices)
                 r.fill(rj)
-                r = FixedQuery(answers={r.idx}, is_anchor=True)
+                r = r.to_fixed_query()
 
                 choices = list(trs_o[tk][rj].keys())
                 if len(choices) <= 0:
                     return set()
                 si = random.choice(choices)
                 s.fill(si)
-                s = FixedQuery(answers={s.idx}, is_anchor=True)
+                s = s.to_fixed_query()
             elif s_is_missing and not r_is_missing and not t_is_missing:
                 choices = list(t.timestamps)
                 if len(choices) <= 0:
@@ -217,7 +217,7 @@ class SamplingParser(BasicParser):
                     return set()
                 si = random.choice(choices)
                 s.fill(si)
-                s = FixedQuery(answers={s.idx}, is_anchor=True)
+                s = s.to_fixed_query()
             elif not s_is_missing and r_is_missing and not t_is_missing:
                 choices = list(s.answers)
                 if len(choices) <= 0:
@@ -234,7 +234,7 @@ class SamplingParser(BasicParser):
                     return set()
                 rj = random.choice(choices)
                 r.fill(rj)
-                r = FixedQuery(answers={r.idx}, is_anchor=True)
+                r = r.to_fixed_query()
             elif not s_is_missing and not r_is_missing and t_is_missing:
                 choices = list(s.answers)
                 if len(choices) <= 0:
@@ -251,7 +251,7 @@ class SamplingParser(BasicParser):
                     return set()
                 tk = random.choice(choices)
                 t.fill(tk)
-                t = FixedQuery(timestamps={t.idx}, is_anchor=True)
+                t = t.to_fixed_query()
 
             answers = set()
             for si in s.answers:
@@ -266,15 +266,15 @@ class SamplingParser(BasicParser):
             if s_is_missing and r_is_missing and o_is_missing:
                 si = random.choice(list(sro_t.keys()))
                 s.fill(si)
-                s = FixedQuery(answers={s.idx}, is_anchor=True)
+                s = s.to_fixed_query()
 
                 rj = random.choice(list(sro_t[si].keys()))
                 r.fill(rj)
-                r = FixedQuery(answers={r.idx}, is_anchor=True)
+                r = r.to_fixed_query()
 
                 ok = random.choice(list(sro_t[si][rj].keys()))
                 o.fill(ok)
-                o = FixedQuery(timestamps={o.idx}, is_anchor=True)
+                o = o.to_fixed_query()
             elif not s_is_missing and r_is_missing and o_is_missing:
                 choices = list(s.answers)
                 if len(choices) <= 0:
@@ -286,14 +286,14 @@ class SamplingParser(BasicParser):
                     return set()
                 rj = random.choice(choices)
                 r.fill(rj)
-                r = FixedQuery(answers={r.idx}, is_anchor=True)
+                r = r.to_fixed_query()
 
                 choices = list(sro_t[si][rj].keys())
                 if len(choices) <= 0:
                     return set()
                 ok = random.choice(choices)
                 o.fill(ok)
-                o = FixedQuery(timestamps={o.idx}, is_anchor=True)
+                o = o.to_fixed_query()
             elif s_is_missing and not r_is_missing and o_is_missing:
                 choices = list(r.answers)
                 if len(choices) <= 0:
@@ -305,14 +305,14 @@ class SamplingParser(BasicParser):
                     return set()
                 si = random.choice(choices)
                 s.fill(si)
-                s = FixedQuery(answers={s.idx}, is_anchor=True)
+                s = s.to_fixed_query()
 
                 choices = list(rso_t[rj][si].keys())
                 if len(choices) <= 0:
                     return set()
                 ok = random.choice(choices)
                 o.fill(ok)
-                o = FixedQuery(timestamps={o.idx}, is_anchor=True)
+                o = o.to_fixed_query()
             elif s_is_missing and r_is_missing and not o_is_missing:
                 choices = list(o.answers)
                 if len(choices) <= 0:
@@ -324,14 +324,14 @@ class SamplingParser(BasicParser):
                     return set()
                 rj = random.choice(choices)
                 r.fill(rj)
-                r = FixedQuery(answers={r.idx}, is_anchor=True)
+                r = r.to_fixed_query()
 
                 choices = list(ors_t[ok][rj].keys())
                 if len(choices) <= 0:
                     return set()
                 si = random.choice(choices)
                 s.fill(si)
-                s = FixedQuery(answers={s.idx}, is_anchor=True)
+                s = s.to_fixed_query()
             elif s_is_missing and not r_is_missing and not o_is_missing:
                 choices = list(o.answers)
                 if len(choices) <= 0:
@@ -348,7 +348,7 @@ class SamplingParser(BasicParser):
                     return set()
                 si = random.choice(choices)
                 s.fill(si)
-                s = FixedQuery(answers={s.idx}, is_anchor=True)
+                s = s.to_fixed_query()
             elif not s_is_missing and r_is_missing and not o_is_missing:
                 choices = list(s.answers)
                 if len(choices) <= 0:
@@ -365,7 +365,7 @@ class SamplingParser(BasicParser):
                     return set()
                 rj = random.choice(choices)
                 r.fill(rj)
-                r = FixedQuery(answers={r.idx}, is_anchor=True)
+                r = r.to_fixed_query()
             elif not s_is_missing and not r_is_missing and o_is_missing:
                 choices = list(s.answers)
                 if len(choices) <= 0:
@@ -382,7 +382,7 @@ class SamplingParser(BasicParser):
                     return set()
                 ok = random.choice(choices)
                 o.fill(ok)
-                o = FixedQuery(timestamps={o.idx}, is_anchor=True)
+                o = o.to_fixed_query()
 
             timestamps = set()
             for si in s.answers:
