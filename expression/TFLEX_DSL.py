@@ -309,10 +309,6 @@ class SamplingParser(BasicParser):
         # fast sampling
         valid_e2i_o_list = [k for k, v in o_srt.items() if len(v) >= 2]
 
-        # valid_e2i_v_list = [len(v) for k, v in o_srt.items() if len(v) >= 2]
-        # print("valid_e2i_o_list", len(valid_e2i_o_list), "max=", sum([i * (i-1) // 2 for i in valid_e2i_v_list]))
-        # print(sorted(valid_e2i_v_list)[-10:])
-
         def fast_e2i(e1, r1, t1, e2, r2, t2):
             o = random.choice(valid_e2i_o_list)
             (e1_idx, r1_idx, t1_idx), (e2_idx, r2_idx, t2_idx) = tuple(random.sample(list(o_srt[o]), k=2))
@@ -326,10 +322,6 @@ class SamplingParser(BasicParser):
             return self.fast_function("e2i")(*placeholder2fixed(placeholders))
 
         valid_e3i_o_list = [k for k, v in o_srt.items() if len(v) >= 3]
-
-        # valid_e3i_v_list = [len(v) for k, v in o_srt.items() if len(v) >= 3]
-        # print("valid_e3i_o_list", len(valid_e3i_o_list), "max=", sum([i * (i-1)* (i-2) // 6 for i in valid_e3i_v_list]))
-        # print(sorted(valid_e3i_v_list)[-10:])
 
         def fast_e3i(e1, r1, t1, e2, r2, t2, e3, r3, t3):
             o = random.choice(valid_e3i_o_list)
@@ -348,10 +340,6 @@ class SamplingParser(BasicParser):
 
         valid_t2i_t_list = [k for k, v in t_sro.items() if len(v) >= 2]
 
-        # valid_t2i_v_list = [len(v) for k, v in t_sro.items() if len(v) >= 2]
-        # print("valid_t2i_t_list", len(valid_t2i_t_list), "max=", sum([i * (i-1) // 2 for i in valid_t2i_v_list]))
-        # print(sorted(valid_t2i_v_list)[-10:])
-
         def fast_t2i(e1, r1, e2, e3, r2, e4):
             t = random.choice(valid_t2i_t_list)
             (e1_idx, r1_idx, e2_idx), (e3_idx, r2_idx, e4_idx) = tuple(random.sample(list(t_sro[t]), k=2))
@@ -365,11 +353,6 @@ class SamplingParser(BasicParser):
             return self.fast_function("t2i")(*placeholder2fixed(placeholders))
 
         valid_t3i_t_list = [k for k, v in t_sro.items() if len(v) >= 3]
-
-        # valid_t3i_v_list = [len(v) for k, v in t_sro.items() if len(v) >= 3]
-        # print("valid_t3i_t_list", len(valid_t3i_t_list), "max=", sum([i * (i-1) * (i-2) // 6 for i in valid_t3i_v_list]))
-        # print(sorted(valid_t3i_v_list)[-10:])
-        # print()
 
         def fast_t3i(e1, r1, e2, e3, r2, e4, e5, r3, e6):
             t = random.choice(valid_t3i_t_list)
@@ -435,6 +418,18 @@ class SamplingParser(BasicParser):
             left_t_ids = fast_Pt_lPe_targeted(e1, r1, t1, r2, e2, target=not_t)
             return FixedQuery(timestamps=left_t_ids & right_t_ids)
 
+        def fast_Pe_Pt(e1, r1, e2, r2, e3):
+            # return Pe(e1, r1, Pt(e2, r2, e3))
+            o_idx = random.choice(list(o_srt.keys()))
+            e1_idx, r1_idx, t1_idx = random.choice(list(o_srt[o_idx]))
+            e1.fill(e1_idx)
+            r1.fill(r1_idx)
+            o_ids = set()
+            t_ids = fast_Pt_targeted(e2, r2, e3, target=t1_idx)
+            for t_idx in t_ids:
+                o_ids = o_ids | srt_o[e1_idx][r1_idx][t_idx]
+            return FixedQuery(answers=o_ids)
+
         self.fast_ops = {
             "fast_e2i": fast_e2i,
             "fast_e3i": fast_e3i,
@@ -444,6 +439,7 @@ class SamplingParser(BasicParser):
             "fast_Pt_re2i": fast_Pt_re2i,
             "fast_Pt_lPe": fast_Pt_lPe,
             "fast_t2i_NPt": fast_t2i_NPt,
+            "fast_Pe_Pt": fast_Pe_Pt,
         }
         super().__init__(variables=variables, neural_ops=dict(**neural_ops, **self.fast_ops))
         for _, qs in query_structures.items():
