@@ -72,6 +72,10 @@ class Placeholder:
     def fill(self, idx: int):
         self.idx = idx
 
+    def fill_to_fixed_query(self, idx: int):
+        self.idx = idx
+        return self.to_fixed_query()
+
     def from_tuple(self, t: Tuple[str, int]):
         type_of_idx, idx = t
         self.name = type_of_idx
