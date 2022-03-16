@@ -473,10 +473,12 @@ class SamplingParser(BasicParser):
 
         def fast_Pt_le2i(e1, r1, t1, e2, r2, t2, r3, e3):
             q = fast_e2i(e1, r1, t1, e2, r2, t2)
+            print(len(q))
             return self.fast_function("Pt")(q, r3, e3)
 
         def fast_Pt_re2i(e1, r1, e2, r2, t1, e3, r3, t2):
             q = fast_e2i(e2, r2, t1, e3, r3, t2)
+            print(len(q))
             return self.fast_function("Pt")(e1, r1, q)
 
         def fast_Pe_targeted(e1, r1, t1, target: int):
