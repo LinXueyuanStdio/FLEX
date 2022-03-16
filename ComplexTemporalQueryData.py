@@ -659,7 +659,7 @@ class ComplexQueryData(TemporalKnowledgeData):
             "t2u", "Pe_t2u",  # t-2u, t-up
         ]
         # how many samples should we generate?
-        self.train_triples_count = 8 * 25  # TODO remove it
+        # self.train_triples_count = 8 * 25  # TODO remove it
         test_sample_count = self.train_triples_count // 25
         max_sample_count = self.train_triples_count + test_sample_count + test_sample_count
         sample_counts = {
@@ -743,7 +743,10 @@ class ComplexQueryData(TemporalKnowledgeData):
             test_answers = set()
             placeholders = None
             conflict_count = -1
-            while len(answers) <= 0:
+            while len(answers) <= 0 or (len(answers) > 0 and (len(valid_answers) <= 0 or len(test_answers) <= 0)):
+                # len(answers) > 0 and (len(valid_answers) <= 0 or len(test_answers) <= 0)
+                # for queries containing negation, test may has no answers while train has lots of answers.
+                # if test has no answers, we are not able to calculate metrics.
                 placeholders = get_placeholder_list(train_query_structure_func)
                 sampling_query_answers: FixedQuery = train_query_structure_func(*placeholders)
                 if sampling_query_answers.answers is not None and len(sampling_query_answers.answers) > 0:

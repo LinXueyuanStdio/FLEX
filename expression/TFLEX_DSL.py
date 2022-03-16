@@ -531,6 +531,7 @@ class SamplingParser(BasicParser):
             "fast_Pe_Pt": fast_Pe_Pt,
             "fast_Pe_e2i": fast_Pe_e2i,
         }
+        # TODO Pe_t2i_PtPe_NPt 在 train 中有答案，在 test 中没有答案
         super().__init__(variables=variables, neural_ops=dict(**neural_ops, **self.fast_ops))
         for _, qs in query_structures.items():
             self.eval(qs)
