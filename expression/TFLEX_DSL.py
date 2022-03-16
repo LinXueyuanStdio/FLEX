@@ -395,21 +395,21 @@ class SamplingParser(BasicParser):
             return self.fast_function("Pt")(e1, r1, q)
 
         def fast_Pe_targeted(e1, r1, t1, target: int):
-            e1_idx, r1_idx, t1_idx = random.choice(o_srt[target])
+            e1_idx, r1_idx, t1_idx = random.choice(list(o_srt[target]))
             e1.fill(e1_idx)
             r1.fill(r1_idx)
             t1.fill(t1_idx)
             return srt_o[e1_idx][r1_idx][t1_idx]
 
         def fast_Pt_targeted(e1, r1, e2, target: int):
-            e1_idx, r1_idx, e2_idx = random.choice(t_sro[target])
+            e1_idx, r1_idx, e2_idx = random.choice(list(t_sro[target]))
             e1.fill(e1_idx)
             r1.fill(r1_idx)
             e2.fill(e2_idx)
             return sro_t[e1_idx][r1_idx][e2_idx]
 
         def fast_Pt_lPe_targeted(e1, r1, t1, r2, e2, target: int):
-            e1_idx, r1_idx, e2_idx = random.choice(t_sro[target])
+            e1_idx, r1_idx, e2_idx = random.choice(list(t_sro[target]))
             e1_ids = fast_Pe_targeted(e1, r1, t1, target=e1_idx)
             r2.fill(r1_idx)
             e2.fill(e2_idx)
@@ -420,13 +420,13 @@ class SamplingParser(BasicParser):
 
         def fast_Pt_lPe(e1, r1, t1, r2, e2):
             # return Pt(Pe(e1, r1, t1), r2, e2)
-            t = random.choice(t_sro)
+            t = random.choice(list(t_sro.keys()))
             t_ids = fast_Pt_lPe_targeted(e1, r1, t1, r2, e2, target=t)
             return FixedQuery(timestamps=t_ids)
 
         def fast_t2i_NPt(e1, r1, t1, r2, e2, e3, r3, e4):
             # return TimeAnd(TimeNot(Pt(Pe(e1, r1, t1), r2, e2)), Pt(e3, r3, e4))
-            t = random.choice(t_sro)
+            t = random.choice(list(t_sro.keys()))
             choices = list(all_timestamp_ids - {t})
             not_t = random.choice(choices)
             while not_t not in t_sro:
