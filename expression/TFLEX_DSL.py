@@ -411,9 +411,8 @@ class SamplingParser(BasicParser):
         # fast sampling
         valid_e2i_o_list = [k for k, v in o_srt.items() if len(v) >= 2]
 
-        def fast_e2i(e1, r1, t1, e2, r2, t2):
-            o = random.choice(valid_e2i_o_list)
-            (e1_idx, r1_idx, t1_idx), (e2_idx, r2_idx, t2_idx) = tuple(random.sample(list(o_srt[o]), k=2))
+        def fast_e2i_targeted(e1, r1, t1, e2, r2, t2, target:int):
+            (e1_idx, r1_idx, t1_idx), (e2_idx, r2_idx, t2_idx) = tuple(random.sample(list(o_srt[target]), k=2))
             e1.fill(e1_idx)
             r1.fill(r1_idx)
             t1.fill(t1_idx)
@@ -422,6 +421,10 @@ class SamplingParser(BasicParser):
             t2.fill(t2_idx)
             placeholders = [e1, r1, t1, e2, r2, t2]
             return self.fast_function("e2i")(*placeholder2fixed(placeholders))
+
+        def fast_e2i(e1, r1, t1, e2, r2, t2):
+            o_idx = random.choice(valid_e2i_o_list)
+            return fast_e2i_targeted(e1, r1, t1, e2, r2, t2, target=o_idx)
 
         valid_e3i_o_list = [k for k, v in o_srt.items() if len(v) >= 3]
 
@@ -472,13 +475,13 @@ class SamplingParser(BasicParser):
             return self.fast_function("t3i")(*placeholder2fixed(placeholders))
 
         def fast_Pt_le2i(e1, r1, t1, e2, r2, t2, r3, e3):
-            q = fast_e2i(e1, r1, t1, e2, r2, t2)
-            print(len(q))
+            o_idx = random.choice(list(set(valid_e2i_o_list) & set(sro_t.keys())))
+            q = fast_e2i_targeted(e1, r1, t1, e2, r2, t2, target=o_idx)
             return self.fast_function("Pt")(q, r3, e3)
 
         def fast_Pt_re2i(e1, r1, e2, r2, t1, e3, r3, t2):
-            q = fast_e2i(e2, r2, t1, e3, r3, t2)
-            print(len(q))
+            o_idx = random.choice(list(set(valid_e2i_o_list) & set(ors_t.keys())))
+            q = fast_e2i_targeted(e2, r2, t1, e3, r3, t2, target=o_idx)
             return self.fast_function("Pt")(e1, r1, q)
 
         def fast_Pe_targeted(e1, r1, t1, target: int):
