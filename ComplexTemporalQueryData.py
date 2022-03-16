@@ -704,6 +704,12 @@ class ComplexQueryData(TemporalKnowledgeData):
             "t2u": test_sample_count,
             "Pe_t2u": test_sample_count,  # t-2u, t-up
         }
+        qs_DM = [
+            "e2u_DM",
+            "Pe_e2u_DM",
+            "t2u_DM",
+            "Pe_t2u_DM",
+        ]
 
         def collate_fn(data):
             queries = [_[0] for _ in data]
@@ -809,6 +815,22 @@ class ComplexQueryData(TemporalKnowledgeData):
                 "args": param_name_list,
                 "queries_answers": test_queries_answers
             }
+            if f"{query_structure_name}_DM" in qs_DM:
+                # De Morgan
+                # same input and same answers, but function structure transformed.
+                query_structure_name = f"{query_structure_name}_DM"
+                self.train_queries_answers[query_structure_name] = {
+                    "args": param_name_list,
+                    "queries_answers": train_queries_answers
+                }
+                self.valid_queries_answers[query_structure_name] = {
+                    "args": param_name_list,
+                    "queries_answers": valid_queries_answers
+                }
+                self.test_queries_answers[query_structure_name] = {
+                    "args": param_name_list,
+                    "queries_answers": test_queries_answers
+                }
 
         # 3. calculate meta
         def avg_answers_count(qa):
