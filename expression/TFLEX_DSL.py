@@ -267,7 +267,7 @@ class SamplingParser(BasicParser):
 
         def fast_e2i(e1, r1, t1, e2, r2, t2):
             o = random.choice(valid_e2i_o_list)
-            (e1_idx, r1_idx, t1_idx), (e2_idx, r2_idx, t2_idx) = tuple(random.choices(list(o_srt[o]), k=2))
+            (e1_idx, r1_idx, t1_idx), (e2_idx, r2_idx, t2_idx) = tuple(random.sample(list(o_srt[o]), k=2))
             e1.fill(e1_idx)
             r1.fill(r1_idx)
             t1.fill(t1_idx)
@@ -284,7 +284,7 @@ class SamplingParser(BasicParser):
 
         def fast_e3i(e1, r1, t1, e2, r2, t2, e3, r3, t3):
             o = random.choice(valid_e3i_o_list)
-            (e1_idx, r1_idx, t1_idx), (e2_idx, r2_idx, t2_idx), (e3_idx, r3_idx, t3_idx) = tuple(random.choices(list(o_srt[o]), k=3))
+            (e1_idx, r1_idx, t1_idx), (e2_idx, r2_idx, t2_idx), (e3_idx, r3_idx, t3_idx) = tuple(random.sample(list(o_srt[o]), k=3))
             e1.fill(e1_idx)
             r1.fill(r1_idx)
             t1.fill(t1_idx)
@@ -304,7 +304,7 @@ class SamplingParser(BasicParser):
 
         def fast_t2i(e1, r1, e2, e3, r2, e4):
             t = random.choice(valid_t2i_t_list)
-            (e1_idx, r1_idx, e2_idx), (e3_idx, r2_idx, e4_idx) = tuple(random.choices(list(t_sro[t]), k=2))
+            (e1_idx, r1_idx, e2_idx), (e3_idx, r2_idx, e4_idx) = tuple(random.sample(list(t_sro[t]), k=2))
             e1.fill(e1_idx)
             r1.fill(r1_idx)
             e2.fill(e2_idx)
@@ -322,7 +322,7 @@ class SamplingParser(BasicParser):
 
         def fast_t3i(e1, r1, e2, e3, r2, e4, e5, r3, e6):
             t = random.choice(valid_t3i_t_list)
-            (e1_idx, r1_idx, e2_idx), (e3_idx, r2_idx, e4_idx), (e5_idx, r3_idx, e6_idx) = tuple(random.choices(list(t_sro[t]), k=3))
+            (e1_idx, r1_idx, e2_idx), (e3_idx, r2_idx, e4_idx), (e5_idx, r3_idx, e6_idx) = tuple(random.sample(list(t_sro[t]), k=3))
             e1.fill(e1_idx)
             r1.fill(r1_idx)
             e2.fill(e2_idx)

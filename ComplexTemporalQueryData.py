@@ -542,7 +542,7 @@ class ComplexQueryData(TemporalKnowledgeData):
             "t2u", "Pe_t2u",  # t-2u, t-up
         ]
         # how many samples should we generate?
-        self.train_triples_count = 8*25
+        self.train_triples_count = 8*25 # TODO remove it
         test_sample_count = self.train_triples_count // 25
         max_sample_count = self.train_triples_count + test_sample_count + test_sample_count
         sample_counts = {
