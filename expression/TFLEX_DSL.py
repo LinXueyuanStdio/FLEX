@@ -145,37 +145,72 @@ class SamplingParser(BasicParser):
                 t.fill(tk)
                 t = FixedQuery(timestamps={t.idx}, is_anchor=True)
             elif not s_is_missing and r_is_missing and t_is_missing:
-                si = random.choice(list(s.answers))
-                rj = random.choice(list(srt_o[si].keys()))
+                choices = list(s.answers)
+                if len(choices) <= 0:
+                    return set()
+                si = random.choice(choices)
+
+                choices = list(srt_o[si].keys())
+                if len(choices) <= 0:
+                    return set()
+                rj = random.choice(choices)
                 r.fill(rj)
                 r = FixedQuery(answers={r.idx}, is_anchor=True)
 
-                tk = random.choice(list(srt_o[si][rj].keys()))
+                choices = list(srt_o[si][rj].keys())
+                if len(choices) <= 0:
+                    return set()
+                tk = random.choice(choices)
                 t.fill(tk)
                 t = FixedQuery(timestamps={t.idx}, is_anchor=True)
             elif s_is_missing and not r_is_missing and t_is_missing:
-                rj = random.choice(list(r.answers))
+                choices = list(r.answers)
+                if len(choices) <= 0:
+                    return set()
+                rj = random.choice(choices)
 
-                si = random.choice(list(rst_o[rj].keys()))
+                choices = list(rst_o[rj].keys())
+                if len(choices) <= 0:
+                    return set()
+                si = random.choice(choices)
                 s.fill(si)
                 s = FixedQuery(answers={s.idx}, is_anchor=True)
 
-                tk = random.choice(list(rst_o[rj][si].keys()))
+                choices = list(rst_o[rj][si].keys())
+                if len(choices) <= 0:
+                    return set()
+                tk = random.choice(choices)
                 t.fill(tk)
                 t = FixedQuery(timestamps={t.idx}, is_anchor=True)
             elif s_is_missing and r_is_missing and not t_is_missing:
-                tk = random.choice(list(t.answers))
+                choices = list(t.answers)
+                if len(choices) <= 0:
+                    return set()
+                tk = random.choice(choices)
 
-                rj = random.choice(list(trs_o[tk].keys()))
+                choices = list(trs_o[tk].keys())
+                if len(choices) <= 0:
+                    return set()
+                rj = random.choice(choices)
                 r.fill(rj)
                 r = FixedQuery(answers={r.idx}, is_anchor=True)
 
-                si = random.choice(list(trs_o[tk][rj].keys()))
+                choices = list(trs_o[tk][rj].keys())
+                if len(choices) <= 0:
+                    return set()
+                si = random.choice(choices)
                 s.fill(si)
                 s = FixedQuery(answers={s.idx}, is_anchor=True)
             elif s_is_missing and not r_is_missing and not t_is_missing:
-                tk = random.choice(list(t.answers))
-                rj = random.choice(list(r.answers))
+                choices = list(t.answers)
+                if len(choices) <= 0:
+                    return set()
+                tk = random.choice(choices)
+
+                choices = list(r.answers)
+                if len(choices) <= 0:
+                    return set()
+                rj = random.choice(choices)
 
                 choices = list(trs_o[tk][rj].keys())
                 if len(choices) <= 0:
@@ -184,8 +219,16 @@ class SamplingParser(BasicParser):
                 s.fill(si)
                 s = FixedQuery(answers={s.idx}, is_anchor=True)
             elif not s_is_missing and r_is_missing and not t_is_missing:
-                si = random.choice(list(s.answers))
-                tk = random.choice(list(t.answers))
+                choices = list(s.answers)
+                if len(choices) <= 0:
+                    return set()
+                si = random.choice(choices)
+
+                choices = list(t.answers)
+                if len(choices) <= 0:
+                    return set()
+                tk = random.choice(choices)
+
                 choices = list(str_o[si][tk].keys())
                 if len(choices) <= 0:
                     return set()
@@ -193,8 +236,16 @@ class SamplingParser(BasicParser):
                 r.fill(rj)
                 r = FixedQuery(answers={r.idx}, is_anchor=True)
             elif not s_is_missing and not r_is_missing and t_is_missing:
-                si = random.choice(list(s.answers))
-                rj = random.choice(list(r.answers))
+                choices = list(s.answers)
+                if len(choices) <= 0:
+                    return set()
+                si = random.choice(choices)
+
+                choices = list(r.answers)
+                if len(choices) <= 0:
+                    return set()
+                rj = random.choice(choices)
+
                 choices = list(srt_o[si][rj].keys())
                 if len(choices) <= 0:
                     return set()
@@ -225,37 +276,72 @@ class SamplingParser(BasicParser):
                 o.fill(ok)
                 o = FixedQuery(timestamps={o.idx}, is_anchor=True)
             elif not s_is_missing and r_is_missing and o_is_missing:
-                si = random.choice(list(s.answers))
-                rj = random.choice(list(sro_t[si].keys()))
+                choices = list(s.answers)
+                if len(choices) <= 0:
+                    return set()
+                si = random.choice(choices)
+
+                choices = list(sro_t[si].keys())
+                if len(choices) <= 0:
+                    return set()
+                rj = random.choice(choices)
                 r.fill(rj)
                 r = FixedQuery(answers={r.idx}, is_anchor=True)
 
-                ok = random.choice(list(sro_t[si][rj].keys()))
+                choices = list(sro_t[si][rj].keys())
+                if len(choices) <= 0:
+                    return set()
+                ok = random.choice(choices)
                 o.fill(ok)
                 o = FixedQuery(timestamps={o.idx}, is_anchor=True)
             elif s_is_missing and not r_is_missing and o_is_missing:
-                rj = random.choice(list(r.answers))
+                choices = list(r.answers)
+                if len(choices) <= 0:
+                    return set()
+                rj = random.choice(choices)
 
-                si = random.choice(list(rso_t[rj].keys()))
+                choices = list(rso_t[rj].keys())
+                if len(choices) <= 0:
+                    return set()
+                si = random.choice(choices)
                 s.fill(si)
                 s = FixedQuery(answers={s.idx}, is_anchor=True)
 
-                ok = random.choice(list(rso_t[rj][si].keys()))
+                choices = list(rso_t[rj][si].keys())
+                if len(choices) <= 0:
+                    return set()
+                ok = random.choice(choices)
                 o.fill(ok)
                 o = FixedQuery(timestamps={o.idx}, is_anchor=True)
             elif s_is_missing and r_is_missing and not o_is_missing:
-                ok = random.choice(list(o.answers))
+                choices = list(o.answers)
+                if len(choices) <= 0:
+                    return set()
+                ok = random.choice(choices)
 
-                rj = random.choice(list(ors_t[ok].keys()))
+                choices = list(ors_t[ok].keys())
+                if len(choices) <= 0:
+                    return set()
+                rj = random.choice(choices)
                 r.fill(rj)
                 r = FixedQuery(answers={r.idx}, is_anchor=True)
 
-                si = random.choice(list(ors_t[ok][rj].keys()))
+                choices = list(ors_t[ok][rj].keys())
+                if len(choices) <= 0:
+                    return set()
+                si = random.choice(choices)
                 s.fill(si)
                 s = FixedQuery(answers={s.idx}, is_anchor=True)
             elif s_is_missing and not r_is_missing and not o_is_missing:
-                ok = random.choice(list(o.answers))
-                rj = random.choice(list(r.answers))
+                choices = list(o.answers)
+                if len(choices) <= 0:
+                    return set()
+                ok = random.choice(choices)
+
+                choices = list(r.answers)
+                if len(choices) <= 0:
+                    return set()
+                rj = random.choice(choices)
 
                 choices = list(tro_s[ok][rj].keys())
                 if len(choices) <= 0:
@@ -264,8 +350,16 @@ class SamplingParser(BasicParser):
                 s.fill(si)
                 s = FixedQuery(answers={s.idx}, is_anchor=True)
             elif not s_is_missing and r_is_missing and not o_is_missing:
-                si = random.choice(list(s.answers))
-                ok = random.choice(list(o.answers))
+                choices = list(s.answers)
+                if len(choices) <= 0:
+                    return set()
+                si = random.choice(choices)
+
+                choices = list(o.answers)
+                if len(choices) <= 0:
+                    return set()
+                ok = random.choice(choices)
+
                 choices = list(sor_t[si][ok].keys())
                 if len(choices) <= 0:
                     return set()
@@ -273,8 +367,16 @@ class SamplingParser(BasicParser):
                 r.fill(rj)
                 r = FixedQuery(answers={r.idx}, is_anchor=True)
             elif not s_is_missing and not r_is_missing and o_is_missing:
-                si = random.choice(list(s.answers))
-                rj = random.choice(list(r.answers))
+                choices = list(s.answers)
+                if len(choices) <= 0:
+                    return set()
+                si = random.choice(choices)
+
+                choices = list(r.answers)
+                if len(choices) <= 0:
+                    return set()
+                rj = random.choice(choices)
+
                 choices = list(sro_t[si][rj].keys())
                 if len(choices) <= 0:
                     return set()
