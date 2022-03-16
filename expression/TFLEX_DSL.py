@@ -242,24 +242,77 @@ class SamplingParser(BasicParser):
             return answers
 
         def find_timestamp(s: Union[FixedQuery, Placeholder], r: Union[FixedQuery, Placeholder], o: Union[FixedQuery, Placeholder]):
-            if isinstance(s, Placeholder):
-                s.fill(sampling_one_entity())
+            s_is_missing, r_is_missing, o_is_missing = isinstance(s, Placeholder), isinstance(r, Placeholder), isinstance(o, Placeholder)
+            if s_is_missing and r_is_missing and o_is_missing:
+                si = random.choice(list(sro_t.keys()))
+                s.fill(si)
                 s = FixedQuery(answers={s.idx}, is_anchor=True)
-            if len(s) <= 0:
-                return set()
-            if isinstance(r, Placeholder):
-                r.fill(sampling_one_relation_for_s(s.answers))
+
+                rj = random.choice(list(sro_t[si].keys()))
+                r.fill(rj)
                 r = FixedQuery(answers={r.idx}, is_anchor=True)
-            if len(r) <= 0:
-                return set()
-            if isinstance(o, Placeholder):
-                entities = sampling_one_entity_for_sr(s.answers, r.answers)
-                if entities is None:
+
+                ok = random.choice(list(sro_t[si][rj].keys()))
+                o.fill(ok)
+                o = FixedQuery(timestamps={o.idx}, is_anchor=True)
+            elif not s_is_missing and r_is_missing and o_is_missing:
+                si = random.choice(list(s.answers))
+                rj = random.choice(list(sro_t[si].keys()))
+                r.fill(rj)
+                r = FixedQuery(answers={r.idx}, is_anchor=True)
+
+                ok = random.choice(list(sro_t[si][rj].keys()))
+                o.fill(ok)
+                o = FixedQuery(timestamps={o.idx}, is_anchor=True)
+            elif s_is_missing and not r_is_missing and o_is_missing:
+                rj = random.choice(list(r.answers))
+
+                si = random.choice(list(rso_t[rj].keys()))
+                s.fill(si)
+                s = FixedQuery(answers={s.idx}, is_anchor=True)
+
+                ok = random.choice(list(rso_t[rj][si].keys()))
+                o.fill(ok)
+                o = FixedQuery(timestamps={o.idx}, is_anchor=True)
+            elif s_is_missing and r_is_missing and not o_is_missing:
+                ok = random.choice(list(o.answers))
+
+                rj = random.choice(list(ors_t[ok].keys()))
+                r.fill(rj)
+                r = FixedQuery(answers={r.idx}, is_anchor=True)
+
+                si = random.choice(list(ors_t[ok][rj].keys()))
+                s.fill(si)
+                s = FixedQuery(answers={s.idx}, is_anchor=True)
+            elif s_is_missing and not r_is_missing and not o_is_missing:
+                ok = random.choice(list(o.answers))
+                rj = random.choice(list(r.answers))
+
+                choices = list(tro_s[ok][rj].keys())
+                if len(choices) <= 0:
                     return set()
-                o.fill(entities)
-                o = FixedQuery(answers={o.idx}, is_anchor=True)
-            if len(o) <= 0:
-                return set()
+                si = random.choice(choices)
+                s.fill(si)
+                s = FixedQuery(answers={s.idx}, is_anchor=True)
+            elif not s_is_missing and r_is_missing and not o_is_missing:
+                si = random.choice(list(s.answers))
+                ok = random.choice(list(o.answers))
+                choices = list(sor_t[si][ok].keys())
+                if len(choices) <= 0:
+                    return set()
+                rj = random.choice(choices)
+                r.fill(rj)
+                r = FixedQuery(answers={r.idx}, is_anchor=True)
+            elif not s_is_missing and not r_is_missing and o_is_missing:
+                si = random.choice(list(s.answers))
+                rj = random.choice(list(r.answers))
+                choices = list(sro_t[si][rj].keys())
+                if len(choices) <= 0:
+                    return set()
+                ok = random.choice(choices)
+                o.fill(ok)
+                o = FixedQuery(timestamps={o.idx}, is_anchor=True)
+
             timestamps = set()
             for si in s.answers:
                 for rj in r.answers:
