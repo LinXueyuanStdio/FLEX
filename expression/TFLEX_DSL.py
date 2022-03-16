@@ -442,8 +442,8 @@ class SamplingParser(BasicParser):
             "fast_t3i": fast_t3i,
             "fast_Pt_le2i": fast_Pt_le2i,
             "fast_Pt_re2i": fast_Pt_re2i,
-            "fast_t2i_NPt": fast_t2i_NPt,
             "fast_Pt_lPe": fast_Pt_lPe,
+            "fast_t2i_NPt": fast_t2i_NPt,
         }
         super().__init__(variables=variables, neural_ops=dict(**neural_ops, **self.fast_ops))
         for _, qs in query_structures.items():
