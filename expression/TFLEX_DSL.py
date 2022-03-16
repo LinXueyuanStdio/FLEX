@@ -6,7 +6,7 @@
 """
 import random
 from math import pi
-from typing import List, Set, Union
+from typing import List, Union
 
 from .ParamSchema import Placeholder, FixedQuery, placeholder2fixed
 from .symbol import Interpreter
@@ -46,7 +46,7 @@ query_structures = {
     "e2i_N": "def e2i_N(e1, r1, t1, e2, r2, t2): return And(Pe(e1, r1, t1), Not(Pe(e2, r2, t2)))",  # 2in
     "e3i_N": "def e3i_N(e1, r1, t1, e2, r2, t2, e3, r3, t3): return And3(Pe(e1, r1, t1), Pe(e2, r2, t2), Not(Pe(e3, r3, t3)))",  # 3in
     # 6. time not
-    "t2i_NPt": "def t2i_NPt(e1, r1, t1, r2, t2, e2, r3, t3): return TimeAnd(TimeNot(Pt(Pe(e1, r1, t1), r2, e2)), Pt(e3, r3, e4))",  # t-pni
+    "t2i_NPt": "def t2i_NPt(e1, r1, t1, r2, e2, e3, r3, e4): return TimeAnd(TimeNot(Pt(Pe(e1, r1, t1), r2, e2)), Pt(e3, r3, e4))",  # t-pni
     "t2i_PtN": "def t2i_PtN(e1, r1, t1, r2, e2, e3, r3, e4): return TimeAnd(Pt(Pe(e1, r1, t1), r2, e2), TimeNot(Pt(e3, r3, e4)))",  # t-pin
     "Pe_t2i_PtPe_NPt": "def Pe_t2i_PtPe_NPt(e1, r1, t1, e2, r2, t2, r3, t3): return Pe(e1, r1, TimeAnd(Pt(Pe(e1, r1, t1), r1, e2), TimeNot(Pt(e3, r2, e4))))",  # t-inp
     "t2i_N": "def t2i_N(e1, r1, e2, e3, r2, e4): return TimeAnd(Pt(e1, r1, e2), TimeNot(Pt(e3, r2, e4)))",  # t-2in
@@ -129,37 +129,6 @@ class SamplingParser(BasicParser):
             variables[f"r{r_id}"] = FixedQuery(answers={r_id}, is_anchor=True)
         for t_id in timestamp_ids:
             variables[f"t{t_id}"] = FixedQuery(timestamps={t_id}, is_anchor=True)
-
-        def sampling_one_entity():
-            entity = random.choice(list(srt_o.keys()))
-            # print("sampling_entity", entity)
-            return entity
-
-        def sampling_one_relation_for_s(s: Set[int]):
-            si = random.choice(list(s))
-            relation = random.choice(list(srt_o[si].keys()))
-            # print("sampling_relation_for_s", relation)
-            return relation
-
-        def sampling_one_timestamp_for_sr(s: Set[int], r: Set[int]):
-            si = random.choice(list(s))
-            rj = random.choice(list(r))
-            choices = list(srt_o[si][rj].keys())
-            if len(choices) <= 0:
-                return None
-            timestamps = random.choice(choices)
-            # print("sampling_timestamp_for_sr", timestamps)
-            return timestamps
-
-        def sampling_one_entity_for_sr(s: Set[int], r: Set[int]):
-            si = random.choice(list(s))
-            rj = random.choice(list(r))
-            choices = list(sro_t[si][rj].keys())
-            if len(choices) <= 0:
-                return None
-            entities = random.choice(choices)
-            # print("sampling_entity_for_sr", entities)
-            return entities
 
         def find_entity(s: Union[FixedQuery, Placeholder], r: Union[FixedQuery, Placeholder], t: Union[FixedQuery, Placeholder]):
             s_is_missing, r_is_missing, t_is_missing = isinstance(s, Placeholder), isinstance(r, Placeholder), isinstance(t, Placeholder)
@@ -425,10 +394,43 @@ class SamplingParser(BasicParser):
             q = fast_e2i(e2, r2, t1, e3, r3, t2)
             return self.fast_function("Pt")(e1, r1, q)
 
-        def fast_t2i_NPt(e1, r1, e2, r2, t1, e3, r3, t2):
-            # TODO
-            q = fast_e2i(e2, r2, t1, e3, r3, t2)
-            return self.fast_function("Pt")(e1, r1, q)
+        def fast_Pe_targeted(e1, r1, t1, target):
+            e1_idx, r1_idx, t1_idx = random.choice(o_srt[target])
+            e1.fill(e1_idx)
+            r1.fill(r1_idx)
+            t1.fill(t1_idx)
+            return srt_o[e1_idx][r1_idx][t1_idx]
+
+        def fast_Pt_targeted(e1, r1, e2, target):
+            e1_idx, r1_idx, e2_idx = random.choice(t_sro[target])
+            e1.fill(e1_idx)
+            r1.fill(r1_idx)
+            e2.fill(e2_idx)
+            return sro_t[e1_idx][r1_idx][e2_idx]
+
+        def fast_Pt_lPe_targeted(e1, r1, t1, r2, e2, target):
+            e1_idx, r1_idx, e2_idx = random.choice(t_sro[target])
+            e1_ids = fast_Pe_targeted(e1, r1, t1, target=e1_idx)
+            r2.fill(r1_idx)
+            e2.fill(e2_idx)
+            answers = set()
+            for idx in e1_ids:
+                answers = answers | sro_t[idx][r1_idx][e2_idx]
+            return answers
+
+        def fast_Pt_lPe(e1, r1, t1, r2, e2):
+            # return Pt(Pe(e1, r1, t1), r2, e2)
+            t = random.choice(t_sro)
+            t_ids = fast_Pt_lPe_targeted(e1, r1, t1, r2, e2, target=t)
+            return FixedQuery(timestamps=t_ids)
+
+        def fast_t2i_NPt(e1, r1, t1, r2, e2, e3, r3, e4):
+            # return TimeAnd(TimeNot(Pt(Pe(e1, r1, t1), r2, e2)), Pt(e3, r3, e4))
+            t = random.choice(t_sro)
+            not_t = random.choice(list(all_timestamp_ids - {t}))
+            right_t_ids = fast_Pt_targeted(e3, r3, e4, t)
+            left_t_ids = fast_Pt_lPe_targeted(e1, r1, t1, r2, e2, target=not_t)
+            return FixedQuery(timestamps=left_t_ids & right_t_ids)
 
         self.fast_ops = {
             "fast_e2i": fast_e2i,
@@ -438,6 +440,7 @@ class SamplingParser(BasicParser):
             "fast_Pt_le2i": fast_Pt_le2i,
             "fast_Pt_re2i": fast_Pt_re2i,
             "fast_t2i_NPt": fast_t2i_NPt,
+            "fast_Pt_lPe": fast_Pt_lPe,
         }
         super().__init__(variables=variables, neural_ops=dict(**neural_ops, **self.fast_ops))
         for _, qs in query_structures.items():
