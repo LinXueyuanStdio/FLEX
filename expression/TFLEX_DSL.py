@@ -30,10 +30,10 @@ query_structures = {
     "t3i": "def t3i(e1, r1, e2, e3, r2, e4, e5, r3, e6): return TimeAnd3(Pt(e1, r1, e2), Pt(e3, r2, e4), Pt(e5, r3, e6))",  # t-3i
     # 5. complex time and
     "e2i_Pe": "def e2i_Pe(e1, r1, t1, r2, t2, e2, r3, t3): return And(Pe(Pe(e1, r1, t1), r2, t2), Pe(e2, r3, t3))",  # pi
-    "Pe_e2i": "def Pe_e2i(e1, r1, t1, e2, r2, t2): return Pe(And(Pe(e1, r1, t1), Pe(e2, r2, t2)), r3, t3)",  # ip
+    "Pe_e2i": "def Pe_e2i(e1, r1, t1, e2, r2, t2, r3, t3): return Pe(e2i(e1, r1, t1, e2, r2, t2), r3, t3)",  # ip
     "Pt_le2i": "def Pt_le2i(e1, r1, t1, e2, r2, t2, r3, e3): return Pt(e2i(e1, r1, t1, e2, r2, t2), r3, e3)",  # mix ip
     "Pt_re2i": "def Pt_re2i(e1, r1, e2, r2, t1, e3, r3, t2): return Pt(e1, r1, e2i(e2, r2, t1, e3, r3, t2))",  # mix ip
-    "t2i_Pe": "def t2i_Pe(e1, r1, t1, r2, t2, e2, r3, t3): return TimeAnd(Pt(Pe(e1, r1, t1), r2, e2), Pt(e3, r3, e4))",  # t-pi
+    "t2i_Pe": "def t2i_Pe(e1, r1, t1, r2, e2, r3, e4): return TimeAnd(Pt(Pe(e1, r1, t1), r2, e2), Pt(e3, r3, e4))",  # t-pi
     "Pe_t2i": "def Pe_t2i(e1, r1, e2, r2, e3, e4, r3, e5): return Pe(e1, r1, t2i(e2, r2, e3, e4, r3, e5))",  # t-ip
     "Pe_at2i": "def Pe_at2i(e1, r1, e2, r2, e3, e4, r3, e5): return Pe(e1, r1, after(t2i(e2, r2, e3, e4, r3, e5)))",
     "Pe_bt2i": "def Pe_bt2i(e1, r1, e2, r2, e3, e4, r3, e5): return Pe(e1, r1, before(t2i(e2, r2, e3, e4, r3, e5)))",
@@ -513,6 +513,12 @@ class SamplingParser(BasicParser):
                 o_ids = o_ids | srt_o[e1_idx][r1_idx][t_idx]
             return FixedQuery(answers=o_ids)
 
+        def fast_Pe_e2i(e1, r1, t1, e2, r2, t2, r3, t3):
+            # return Pe(And(Pe(e1, r1, t1), Pe(e2, r2, t2)), r3, t3)
+            o_idx = random.choice(list(set(valid_e2i_o_list) & set(sro_t.keys())))
+            q = fast_e2i_targeted(e1, r1, t1, e2, r2, t2, target=o_idx)
+            return self.fast_function("Pe")(q, r3, t3)
+        
         self.fast_ops = {
             "fast_e2i": fast_e2i,
             "fast_e3i": fast_e3i,
@@ -523,6 +529,7 @@ class SamplingParser(BasicParser):
             "fast_Pt_lPe": fast_Pt_lPe,
             "fast_t2i_NPt": fast_t2i_NPt,
             "fast_Pe_Pt": fast_Pe_Pt,
+            "fast_Pe_e2i": fast_Pe_e2i,
         }
         super().__init__(variables=variables, neural_ops=dict(**neural_ops, **self.fast_ops))
         for _, qs in query_structures.items():
