@@ -264,10 +264,12 @@ class RelationalTripletData(BaseData):
 
     def transform_mappings(self):
         """ Function to generate the mapping from string name to integer ids. """
-        self.entity2idx = {v: k for k, v in enumerate(self.all_entities)}
-        self.idx2entity = {v: k for k, v in self.entity2idx.items()}
-        self.relation2idx = {v: k for k, v in enumerate(self.all_relations)}
-        self.idx2relation = {v: k for k, v in self.relation2idx.items()}
+        for k, v in enumerate(self.all_entities):
+            self.entity2idx[v] = k
+            self.idx2entity[k] = v
+        for k, v in enumerate(self.all_relations):
+            self.relation2idx[v] = k
+            self.idx2relation[k] = v
 
     def transform_all_triplets_ids(self):
         entity2idx = self.entity2idx
