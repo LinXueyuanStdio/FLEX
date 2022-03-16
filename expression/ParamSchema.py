@@ -37,6 +37,11 @@ class FixedQuery:
         self.timestamps = timestamps if timestamps is not None else set()
         self.is_anchor = is_anchor
 
+    def __len__(self):
+        answers_len = len(self.answers) if self.answers is not None else 0
+        timestamps_len = len(self.timestamps) if self.timestamps is not None else 0
+        return answers_len + timestamps_len
+
     def __repr__(self):
         return f"answers={self.answers}, timestamps={self.timestamps}, is_anchor={self.is_anchor}"
 

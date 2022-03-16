@@ -160,9 +160,9 @@ class SamplingParser(BasicParser):
         def find_entity(s: Union[FixedQuery, Placeholder], r: Union[FixedQuery, Placeholder], t: Union[FixedQuery, Placeholder]):
             # if isinstance(s, Placeholder) and isinstance(r, Placeholder) and isinstance(t, Placeholder):
             #     return _find_entity_no_empty(s, r, t)
-            entities = _find_entity(s, r, t)
-            while len(entities) <= 0:
-                entities = _find_entity(s, r, t)
+            entities = _find_entity(s, r, t) # may empty
+            # while len(entities) <= 0:
+            #     entities = _find_entity(s, r, t)
             return entities
 
         def _find_entity_no_empty(s: Placeholder, r: Placeholder, t: Placeholder):
@@ -177,15 +177,21 @@ class SamplingParser(BasicParser):
             if isinstance(s, Placeholder):
                 s.fill(sampling_one_entity())
                 s = FixedQuery(answers={s.idx}, is_anchor=True)
+            if len(s) <= 0:
+                return set()
             if isinstance(r, Placeholder):
                 r.fill(sampling_one_relation_for_s(s.answers))
                 r = FixedQuery(answers={r.idx}, is_anchor=True)
+            if len(r) <= 0:
+                return set()
             if isinstance(t, Placeholder):
                 timestamps = sampling_one_timestamp_for_sr(s.answers, r.answers)
                 if timestamps is None:
                     return set()
                 t.fill(timestamps)
                 t = FixedQuery(timestamps={t.idx}, is_anchor=True)
+            if len(t) <= 0:
+                return set()
             answers = set()
             for si in s.answers:
                 for rj in r.answers:
@@ -197,9 +203,9 @@ class SamplingParser(BasicParser):
         def find_timestamp(s: Union[FixedQuery, Placeholder], r: Union[FixedQuery, Placeholder], o: Union[FixedQuery, Placeholder]):
             # if isinstance(s, Placeholder) and isinstance(r, Placeholder) and isinstance(o, Placeholder):
             #     return _find_timestamp_no_empty(s, r, o)
-            timestamps = _find_timestamp(s, r, o)
-            while len(timestamps) <= 0:
-                timestamps = _find_timestamp(s, r, o)
+            timestamps = _find_timestamp(s, r, o) # may empty
+            # while len(timestamps) <= 0:
+            #     timestamps = _find_timestamp(s, r, o)
             return timestamps
 
         def _find_timestamp_no_empty(s: Placeholder, r: Placeholder, o: Placeholder):
@@ -214,15 +220,21 @@ class SamplingParser(BasicParser):
             if isinstance(s, Placeholder):
                 s.fill(sampling_one_entity())
                 s = FixedQuery(answers={s.idx}, is_anchor=True)
+            if len(s) <= 0:
+                return set()
             if isinstance(r, Placeholder):
                 r.fill(sampling_one_relation_for_s(s.answers))
                 r = FixedQuery(answers={r.idx}, is_anchor=True)
+            if len(r) <= 0:
+                return set()
             if isinstance(o, Placeholder):
                 entities = sampling_one_entity_for_sr(s.answers, r.answers)
                 if entities is None:
                     return set()
                 o.fill(entities)
                 o = FixedQuery(answers={o.idx}, is_anchor=True)
+            if len(o) <= 0:
+                return set()
             timestamps = set()
             for si in s.answers:
                 for rj in r.answers:
@@ -249,6 +261,9 @@ class SamplingParser(BasicParser):
 
         # fast sampling
         valid_e2i_o_list = [k for k, v in o_srt.items() if len(v) >= 2]
+        # valid_e2i_v_list = [len(v) for k, v in o_srt.items() if len(v) >= 2]
+        # print("valid_e2i_o_list", len(valid_e2i_o_list), "max=", sum([i * (i-1) // 2 for i in valid_e2i_v_list]))
+        # print(sorted(valid_e2i_v_list)[-10:])
 
         def fast_e2i(e1, r1, t1, e2, r2, t2):
             o = random.choice(valid_e2i_o_list)
@@ -263,6 +278,9 @@ class SamplingParser(BasicParser):
             return self.eval("e2i")(*placeholder2fixed(placeholders))
 
         valid_e3i_o_list = [k for k, v in o_srt.items() if len(v) >= 3]
+        # valid_e3i_v_list = [len(v) for k, v in o_srt.items() if len(v) >= 3]
+        # print("valid_e3i_o_list", len(valid_e3i_o_list), "max=", sum([i * (i-1)* (i-2) // 6 for i in valid_e3i_v_list]))
+        # print(sorted(valid_e3i_v_list)[-10:])
 
         def fast_e3i(e1, r1, t1, e2, r2, t2, e3, r3, t3):
             o = random.choice(valid_e3i_o_list)
@@ -280,6 +298,9 @@ class SamplingParser(BasicParser):
             return self.eval("e3i")(*placeholder2fixed(placeholders))
 
         valid_t2i_t_list = [k for k, v in t_sro.items() if len(v) >= 2]
+        # valid_t2i_v_list = [len(v) for k, v in t_sro.items() if len(v) >= 2]
+        # print("valid_t2i_t_list", len(valid_t2i_t_list), "max=", sum([i * (i-1) // 2 for i in valid_t2i_v_list]))
+        # print(sorted(valid_t2i_v_list)[-10:])
 
         def fast_t2i(e1, r1, e2, e3, r2, e4):
             t = random.choice(valid_t2i_t_list)
@@ -294,6 +315,10 @@ class SamplingParser(BasicParser):
             return self.eval("t2i")(*placeholder2fixed(placeholders))
 
         valid_t3i_t_list = [k for k, v in t_sro.items() if len(v) >= 3]
+        # valid_t3i_v_list = [len(v) for k, v in t_sro.items() if len(v) >= 3]
+        # print("valid_t3i_t_list", len(valid_t3i_t_list), "max=", sum([i * (i-1) * (i-2) // 6 for i in valid_t3i_v_list]))
+        # print(sorted(valid_t3i_v_list)[-10:])
+        # print()
 
         def fast_t3i(e1, r1, e2, e3, r2, e4, e5, r3, e6):
             t = random.choice(valid_t3i_t_list)

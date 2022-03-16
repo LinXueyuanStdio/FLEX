@@ -542,6 +542,7 @@ class ComplexQueryData(TemporalKnowledgeData):
             "t2u", "Pe_t2u",  # t-2u, t-up
         ]
         # how many samples should we generate?
+        self.train_triples_count = 8*25
         test_sample_count = self.train_triples_count // 25
         max_sample_count = self.train_triples_count + test_sample_count + test_sample_count
         sample_counts = {
@@ -602,7 +603,8 @@ class ComplexQueryData(TemporalKnowledgeData):
             def __init__(self, train_parser, valid_parser, test_parser, query_structure_name, sample_count):
                 if query_structure_name in train_parser.fast_ops.keys():
                     # fast sampling
-                    # the fast functions make sure that len(answers)>0 in one step.
+                    # the fast function makes sure that len(answers)>0 in one step.
+                    # the fast function is the proxy of the original function.
                     self.train_query_structure_func = train_parser.eval(f"fast_{query_structure_name}")
                 else:
                     self.train_query_structure_func = train_parser.eval(query_structure_name)
@@ -646,8 +648,6 @@ class ComplexQueryData(TemporalKnowledgeData):
             print(query_structure_name)
             sample_count = sample_counts[query_structure_name]
             num_workers = 16
-            if query_structure_name == "e2i":
-                sampling_dataset = SamplingDataset(train_parser, valid_parser, test_parser, query_structure_name, sample_count)
             sampling_loader = DataLoader(
                 SamplingDataset(train_parser, valid_parser, test_parser, query_structure_name, sample_count),
                 batch_size=512,
