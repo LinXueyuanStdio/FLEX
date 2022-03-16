@@ -137,6 +137,23 @@ def build_map_sro2t_srt2o_t2sro_o2srt(triples_ids: List[Tuple[int, int, int, int
     return sro_t, srt_o, t_sro, o_srt
 
 
+def build_not_t2sro_o2srt(entities_ids: List[int], timestamps_ids: List[int],
+                          sro_t: TYPE_MAPPING_sro_t, srt_o: TYPE_MAPPING_srt_o) -> Tuple[TYPE_MAPPING_t_sro, TYPE_MAPPING_o_srt]:
+    not_t_sro = defaultdict(set)
+    not_o_srt = defaultdict(set)
+    for s in sro_t:
+        for r in sro_t[s]:
+            for o in sro_t[s][r]:
+                for t in set(timestamps_ids) - set(sro_t[s][r][o]):  # negation on timestamps
+                    not_t_sro[t].add((s, r, o))
+    for s in srt_o:
+        for r in srt_o[s]:
+            for t in srt_o[s][r]:
+                for o in set(entities_ids) - set(srt_o[s][r][t]):  # negation on entities
+                    not_o_srt[o].add((s, r, t))
+    return not_t_sro, not_o_srt
+
+
 class TemporalKnowledgeData(BaseData):
     """ The class is the main module that handles the knowledge graph.
 
@@ -492,6 +509,9 @@ class ComplexQueryData(TemporalKnowledgeData):
         train_sro_t, train_srt_o, train_t_sro, train_o_srt = build_map_sro2t_srt2o_t2sro_o2srt(train_triples_ids)
         valid_sro_t, valid_srt_o, valid_t_sro, valid_o_srt = build_map_sro2t_srt2o_t2sro_o2srt(train_triples_ids + valid_triples_ids)
         test_sro_t, test_srt_o, test_t_sro, test_o_srt = build_map_sro2t_srt2o_t2sro_o2srt(train_triples_ids + valid_triples_ids + test_triples_ids)
+        train_not_t_sro, train_not_o_srt = build_not_t2sro_o2srt(self.entities_ids, self.timestamps_ids, train_sro_t, train_srt_o)
+        valid_not_t_sro, valid_not_o_srt = build_not_t2sro_o2srt(self.entities_ids, self.timestamps_ids, valid_sro_t, valid_srt_o)
+        test_not_t_sro, test_not_o_srt = build_not_t2sro_o2srt(self.entities_ids, self.timestamps_ids, test_sro_t, test_srt_o)
 
         # 1. 1-hop: Pe, Pt
         def build_one_hop(param_name_list: List[str], sro_t):
@@ -518,9 +538,9 @@ class ComplexQueryData(TemporalKnowledgeData):
 
         # 2. multi-hop: Pe_aPt, Pe_bPt, etc
         # 2.1 parser
-        train_parser = expression.SamplingParser(self.entities_ids, relations_ids_with_reverse, self.timestamps_ids, train_sro_t, train_srt_o, train_t_sro, train_o_srt)
-        valid_parser = expression.SamplingParser(self.entities_ids, relations_ids_with_reverse, self.timestamps_ids, valid_sro_t, valid_srt_o, valid_t_sro, valid_o_srt)
-        test_parser = expression.SamplingParser(self.entities_ids, relations_ids_with_reverse, self.timestamps_ids, test_sro_t, test_srt_o, test_t_sro, test_o_srt)
+        train_parser = expression.SamplingParser(self.entities_ids, relations_ids_with_reverse, self.timestamps_ids, train_sro_t, train_srt_o, train_t_sro, train_o_srt, train_not_t_sro, train_not_o_srt)
+        valid_parser = expression.SamplingParser(self.entities_ids, relations_ids_with_reverse, self.timestamps_ids, valid_sro_t, valid_srt_o, valid_t_sro, valid_o_srt, valid_not_t_sro, valid_not_o_srt)
+        test_parser = expression.SamplingParser(self.entities_ids, relations_ids_with_reverse, self.timestamps_ids, test_sro_t, test_srt_o, test_t_sro, test_o_srt, test_not_t_sro, test_not_o_srt)
 
         # 2.2. sampling
         # we generate 1p, t-1p according to original train/valid/test triples.
@@ -604,8 +624,8 @@ class ComplexQueryData(TemporalKnowledgeData):
                 fast_query_structure_name = f"fast_{query_structure_name}"
                 if fast_query_structure_name in train_parser.fast_ops.keys():
                     # fast sampling
-                    # the fast function makes sure that len(answers)>0 in one step.
                     # the fast function is the proxy of the original function.
+                    # the fast function makes sure that len(answers)>0 with least steps (in one step if possible).
                     self.train_query_structure_func = train_parser.eval(fast_query_structure_name)
                 else:
                     self.train_query_structure_func = train_parser.eval(query_structure_name)
