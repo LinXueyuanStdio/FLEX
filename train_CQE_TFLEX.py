@@ -38,31 +38,98 @@ def convert_to_feature(x):
     return y
 
 
-class Projection(nn.Module):
-    def __init__(self, dim, hidden_dim=1600, num_layers=2, drop=0.1):
-        super(Projection, self).__init__()
-        self.entity_dim = dim
-        self.relation_dim = dim
+def convert_to_time_feature(x):
+    # [-1, 1]
+    y = torch.tanh(x) * -1
+    return y
+
+
+def convert_to_time_logic(x):
+    # [0, 1]
+    y = torch.sigmoid(2 * x)
+    return y
+
+
+def convert_to_time_density(x):
+    # [0, 1]
+    y = torch.sigmoid(2 * x)
+    return y
+
+
+class EntityProjection(nn.Module):
+    def __init__(self, dim, hidden_dim=800, num_layers=2, drop=0.1):
+        super(EntityProjection, self).__init__()
         self.hidden_dim = hidden_dim
         self.num_layers = num_layers
         self.dropout = nn.Dropout(drop)
-        self.layer1 = nn.Linear(self.entity_dim + self.relation_dim, self.hidden_dim)
-        self.layer0 = nn.Linear(self.hidden_dim, self.entity_dim + self.relation_dim)
+        token_dim = dim * 5
+        self.layer1 = nn.Linear(token_dim, self.hidden_dim)
+        self.layer0 = nn.Linear(self.hidden_dim, token_dim)
         for nl in range(2, num_layers + 1):
             setattr(self, "layer{}".format(nl), nn.Linear(self.hidden_dim, self.hidden_dim))
         for nl in range(num_layers + 1):
             nn.init.xavier_uniform_(getattr(self, "layer{}".format(nl)).weight)
 
-    def forward(self, q_feature, q_logic, r_feature, r_logic):
-        x = torch.cat([q_feature + r_feature, q_logic + r_logic], dim=-1)
+    def forward(self,
+                q_feature, q_logic, q_time_feature, q_time_logic, q_time_density,
+                r_feature, r_logic, r_time_feature, r_time_logic, r_time_density,
+                t_feature, t_logic, t_time_feature, t_time_logic, t_time_density):
+        x = torch.cat([
+            q_feature + r_feature + t_feature,
+            q_logic + r_logic + t_logic,
+            q_time_feature + r_time_feature + t_time_feature,
+            q_time_logic + r_time_logic + t_time_logic,
+            q_time_density + r_time_density + t_time_density,
+        ], dim=-1)
         for nl in range(1, self.num_layers + 1):
             x = F.relu(getattr(self, "layer{}".format(nl))(x))
         x = self.layer0(x)
 
-        feature, logic = torch.chunk(x, 2, dim=-1)
+        feature, logic, time_feature, time_logic, time_density = torch.chunk(x, 5, dim=-1)
         feature = convert_to_feature(feature)
         logic = convert_to_logic(logic)
-        return feature, logic
+        time_feature = convert_to_time_feature(time_feature)
+        time_logic = convert_to_time_logic(time_logic)
+        time_density = convert_to_time_density(time_density)
+        return feature, logic, time_feature, time_logic, time_density
+
+
+class TimeProjection(nn.Module):
+    def __init__(self, dim, hidden_dim=800, num_layers=2, drop=0.1):
+        super(TimeProjection, self).__init__()
+        self.hidden_dim = hidden_dim
+        self.num_layers = num_layers
+        self.dropout = nn.Dropout(drop)
+        token_dim = dim * 5
+        self.layer1 = nn.Linear(token_dim, self.hidden_dim)
+        self.layer0 = nn.Linear(self.hidden_dim, token_dim)
+        for nl in range(2, num_layers + 1):
+            setattr(self, "layer{}".format(nl), nn.Linear(self.hidden_dim, self.hidden_dim))
+        for nl in range(num_layers + 1):
+            nn.init.xavier_uniform_(getattr(self, "layer{}".format(nl)).weight)
+
+    def forward(self,
+                q1_feature, q1_logic, q1_time_feature, q1_time_logic, q1_time_density,
+                r_feature, r_logic, r_time_feature, r_time_logic, r_time_density,
+                q2_feature, q2_logic, q2_time_feature, q2_time_logic, q2_time_density):
+        x = torch.cat([
+            q1_feature + r_feature + q2_feature,
+            q1_logic + r_logic + q2_logic,
+            q1_time_feature + r_time_feature + q2_time_feature,
+            q1_time_logic + r_time_logic + q2_time_logic,
+            q1_time_density + r_time_density + q2_time_density,
+        ], dim=-1)
+        for nl in range(1, self.num_layers + 1):
+            x = F.relu(getattr(self, "layer{}".format(nl))(x))
+        x = self.layer0(x)
+
+        feature, logic, time_feature, time_logic, time_density = torch.chunk(x, 5, dim=-1)
+        feature = convert_to_feature(feature)
+        logic = convert_to_logic(logic)
+        time_feature = convert_to_time_feature(time_feature)
+        time_logic = convert_to_time_logic(time_logic)
+        time_density = convert_to_time_density(time_density)
+        return feature, logic, time_feature, time_logic, time_density
 
 
 class Intersection(nn.Module):
@@ -71,20 +138,29 @@ class Intersection(nn.Module):
         self.dim = dim
         self.feature_layer_1 = nn.Linear(self.dim * 2, self.dim)
         self.feature_layer_2 = nn.Linear(self.dim, self.dim)
+        self.time_feature_layer_1 = nn.Linear(self.dim * 3, self.dim)
+        self.time_feature_layer_2 = nn.Linear(self.dim, self.dim)
 
         nn.init.xavier_uniform_(self.feature_layer_1.weight)
         nn.init.xavier_uniform_(self.feature_layer_2.weight)
+        nn.init.xavier_uniform_(self.time_feature_layer_1.weight)
+        nn.init.xavier_uniform_(self.time_feature_layer_2.weight)
 
-    def forward(self, feature, logic):
-        # feature: N x B x d
-        # logic:   N x B x d
+    def forward(self, feature, logic, time_feature, time_logic, time_density):
+        # N x B x d
         logits = torch.cat([feature, logic], dim=-1)  # N x B x 2d
         feature_attention = F.softmax(self.feature_layer_2(F.relu(self.feature_layer_1(logits))), dim=0)
         feature = torch.sum(feature_attention * feature, dim=0)
 
+        logits = torch.cat([time_feature, time_logic, time_density], dim=-1)  # N x B x 2d
+        feature_attention = F.softmax(self.time_feature_layer_2(F.relu(self.time_feature_layer_1(logits))), dim=0)
+        time_feature = torch.sum(feature_attention * time_feature, dim=0)
+
         logic, _ = torch.min(logic, dim=0)
+        time_logic, _ = torch.min(time_logic, dim=0)
+        time_density, _ = torch.min(time_density, dim=0)
         # logic = torch.prod(logic, dim=0)
-        return feature, logic
+        return feature, logic, time_feature, time_logic, time_density
 
 
 class Negation(nn.Module):
@@ -100,10 +176,60 @@ class Negation(nn.Module):
         feature[indicator_negative] = feature[indicator_negative] + 1
         return feature
 
-    def forward(self, feature, logic):
+    def forward(self, feature, logic, time_feature, time_logic, time_density):
         feature = self.neg_feature(feature)
         logic = 1 - logic
-        return feature, logic
+        return feature, logic, time_feature, time_logic, time_density
+
+
+class TemporalNegation(nn.Module):
+    def __init__(self):
+        super(TemporalNegation, self).__init__()
+
+    def neg_feature(self, feature):
+        # f,f' in [-L, L]
+        # f' = (f + 2L) % (2L) - L, where L=1
+        indicator_positive = feature >= 0
+        indicator_negative = feature < 0
+        feature[indicator_positive] = feature[indicator_positive] - 1
+        feature[indicator_negative] = feature[indicator_negative] + 1
+        return feature
+
+    def forward(self, feature, logic, time_feature, time_logic, time_density):
+        time_feature = self.neg_feature(time_feature)
+        time_logic = 1 - time_logic
+        return feature, logic, time_feature, time_logic, time_density
+
+
+class Union(nn.Module):
+    def __init__(self, dim):
+        super(Union, self).__init__()
+        self.dim = dim
+        self.feature_layer_1 = nn.Linear(self.dim * 2, self.dim)
+        self.feature_layer_2 = nn.Linear(self.dim, self.dim)
+        self.time_feature_layer_1 = nn.Linear(self.dim * 3, self.dim)
+        self.time_feature_layer_2 = nn.Linear(self.dim, self.dim)
+
+        nn.init.xavier_uniform_(self.feature_layer_1.weight)
+        nn.init.xavier_uniform_(self.feature_layer_2.weight)
+        nn.init.xavier_uniform_(self.time_feature_layer_1.weight)
+        nn.init.xavier_uniform_(self.time_feature_layer_2.weight)
+
+    def forward(self, feature, logic, time_feature, time_logic, time_density):
+        # N x B x d
+        logits = torch.cat([feature, logic], dim=-1)  # N x B x 2d
+        feature_attention = F.softmax(self.feature_layer_2(F.relu(self.feature_layer_1(logits))), dim=0)
+        feature = torch.sum(feature_attention * feature, dim=0)
+
+        logits = torch.cat([time_feature, time_logic, time_density], dim=-1)  # N x B x 2d
+        feature_attention = F.softmax(self.time_feature_layer_2(F.relu(self.time_feature_layer_1(logits))), dim=0)
+        time_feature = torch.sum(feature_attention * time_feature, dim=0)
+
+        logic, _ = torch.max(logic, dim=0)
+        time_logic, _ = torch.max(time_logic, dim=0)
+        time_density, _ = torch.max(time_density, dim=0)
+        # logic = torch.prod(logic, dim=0)
+        return feature, logic, time_feature, time_logic, time_density
 
 
 class FLEX(nn.Module):
@@ -117,16 +243,25 @@ class FLEX(nn.Module):
         self.hidden_dim = hidden_dim
         self.entity_dim = hidden_dim
         self.relation_dim = hidden_dim
+        self.timestamp_dim = hidden_dim
 
         # entity only have feature part but no logic part
         self.entity_feature_embedding = nn.Embedding(nentity, self.entity_dim)
-        self.entity_feature_embedding2 = nn.Embedding(nentity, self.entity_dim)
-        self.timestamp_feature_embedding = nn.Embedding(ntimestamp, self.entity_dim)
+
+        self.timestamp_time_feature_embedding = nn.Embedding(ntimestamp, self.timestamp_dim)
+
         self.relation_feature_embedding = nn.Embedding(nrelation, self.relation_dim)
         self.relation_logic_embedding = nn.Embedding(nrelation, self.relation_dim)
-        self.projection = Projection(self.entity_dim, drop=drop)
-        self.intersection = Intersection(self.entity_dim)
+        self.relation_time_feature_embedding = nn.Embedding(nrelation, self.relation_dim)
+        self.relation_time_logic_embedding = nn.Embedding(nrelation, self.relation_dim)
+        self.relation_time_density_embedding = nn.Embedding(nrelation, self.relation_dim)
+
+        self.entity_projection = EntityProjection(hidden_dim, drop=drop)
+        self.time_projection = TimeProjection(hidden_dim, drop=drop)
+        self.intersection = Intersection(hidden_dim)
+        self.union = Union(hidden_dim)
         self.negation = Negation()
+        self.temporal_negation = TemporalNegation()
 
         self.query_name_dict = query_name_dict
         self.batch_entity_range = torch.arange(nentity).float().repeat(test_batch_size, 1)
@@ -136,17 +271,76 @@ class FLEX(nn.Module):
         embedding_range = self.embedding_range.item()
         self.modulus = nn.Parameter(torch.Tensor([0.5 * embedding_range]), requires_grad=True)
         self.cen = center_reg
+
+        def And(q1, q2):
+            q1_feature, q1_logic, q1_time_feature, q1_time_logic, q1_time_density = q1
+            q2_feature, q2_logic, q2_time_feature, q2_time_logic, q2_time_density = q2
+            feature = torch.stack([q1_feature, q2_feature])
+            logic = torch.stack([q1_logic, q2_logic])
+            time_feature = torch.stack([q1_time_feature, q2_time_feature])
+            time_logic = torch.stack([q1_time_logic, q2_time_logic])
+            time_density = torch.stack([q1_time_density, q2_time_density])
+            return self.intersection(feature, logic, time_feature, time_logic, time_density)
+
+        def And3(q1, q2, q3):
+            q1_feature, q1_logic, q1_time_feature, q1_time_logic, q1_time_density = q1
+            q2_feature, q2_logic, q2_time_feature, q2_time_logic, q2_time_density = q2
+            q3_feature, q3_logic, q3_time_feature, q3_time_logic, q3_time_density = q3
+            feature = torch.stack([q1_feature, q2_feature, q3_feature])
+            logic = torch.stack([q1_logic, q2_logic, q3_logic])
+            time_feature = torch.stack([q1_time_feature, q2_time_feature, q3_time_feature])
+            time_logic = torch.stack([q1_time_logic, q2_time_logic, q3_time_logic])
+            time_density = torch.stack([q1_time_density, q2_time_density, q3_time_density])
+            return self.intersection(feature, logic, time_feature, time_logic, time_density)
+
+        def Or(q1, q2):
+            q1_feature, q1_logic, q1_time_feature, q1_time_logic, q1_time_density = q1
+            q2_feature, q2_logic, q2_time_feature, q2_time_logic, q2_time_density = q2
+            feature = torch.stack([q1_feature, q2_feature])
+            logic = torch.stack([q1_logic, q2_logic])
+            time_feature = torch.stack([q1_time_feature, q2_time_feature])
+            time_logic = torch.stack([q1_time_logic, q2_time_logic])
+            time_density = torch.stack([q1_time_density, q2_time_density])
+            return self.union(feature, logic, time_feature, time_logic, time_density)
+
+        def Not(q):
+            feature, logic, time_feature, time_logic, time_density = q
+            return self.negation(feature, logic, time_feature, time_logic, time_density)
+
+        def TimeNot(q):
+            feature, logic, time_feature, time_logic, time_density = q
+            return self.temporal_negation(feature, logic, time_feature, time_logic, time_density)
+
+        def EntityProjection2(s, r, t):
+            s_feature, s_logic, s_time_feature, s_time_logic, s_time_density = s
+            r_feature, r_logic, r_time_feature, r_time_logic, r_time_density = r
+            t_feature, t_logic, t_time_feature, t_time_logic, t_time_density = t
+            return self.entity_projection(
+                s_feature, s_logic, s_time_feature, s_time_logic, s_time_density,
+                r_feature, r_logic, r_time_feature, r_time_logic, r_time_density,
+                t_feature, t_logic, t_time_feature, t_time_logic, t_time_density
+            )
+        def TimeProjection2(s, r, o):
+            s_feature, s_logic, s_time_feature, s_time_logic, s_time_density = s
+            r_feature, r_logic, r_time_feature, r_time_logic, r_time_density = r
+            t_feature, t_logic, t_time_feature, t_time_logic, t_time_density = t
+            return self.entity_projection(
+                s_feature, s_logic, s_time_feature, s_time_logic, s_time_density,
+                r_feature, r_logic, r_time_feature, r_time_logic, r_time_density,
+                t_feature, t_logic, t_time_feature, t_time_logic, t_time_density
+            )
+
         neural_ops = {
-            "And": lambda q1, q2: FixedQuery(answers=q1.answers & q2.answers, timestamps=q1.timestamps & q2.timestamps),
-            "And3": lambda q1, q2, q3: FixedQuery(answers=q1.answers & q2.answers & q3.answers, timestamps=q1.timestamps & q2.timestamps & q3.timestamps),
-            "Or": lambda q1, q2: FixedQuery(answers=q1.answers | q2.answers, timestamps=q1.timestamps & q2.timestamps),
-            "Not": lambda x: FixedQuery(answers=all_entity_ids - x.answers, timestamps=x.timestamps),
-            "EntityProjection": lambda s, r, t: FixedQuery(answers=find_entity(s, r, t)),
+            "And": And,
+            "And3": And3,
+            "Or": Or,
+            "Not": Not,
+            "EntityProjection":EntityProjection2,
             "TimeProjection": lambda s, r, o: FixedQuery(timestamps=find_timestamp(s, r, o)),
             "TimeAnd": lambda q1, q2: FixedQuery(answers=q1.answers & q2.answers, timestamps=q1.timestamps & q2.timestamps),
             "TimeAnd3": lambda q1, q2, q3: FixedQuery(answers=q1.answers & q2.answers & q3.answers, timestamps=q1.timestamps & q2.timestamps & q3.timestamps),
             "TimeOr": lambda q1, q2: FixedQuery(answers=q1.answers & q2.answers, timestamps=q1.timestamps | q2.timestamps),
-            "TimeNot": lambda x: FixedQuery(answers=x.answers, timestamps=all_timestamp_ids - x.timestamps if len(x.timestamps) > 0 else all_timestamp_ids),
+            "TimeNot": TimeNot,
             "TimeBefore": lambda x: FixedQuery(answers=x.answers, timestamps=set([t for t in timestamp_ids if t < min(x.timestamps)] if len(x.timestamps) > 0 else all_timestamp_ids)),
             "TimeAfter": lambda x: FixedQuery(answers=x.answers, timestamps=set([t for t in timestamp_ids if t > max(x.timestamps)] if len(x.timestamps) > 0 else all_timestamp_ids)),
             "TimeNext": lambda x: FixedQuery(answers=x.answers, timestamps=set([min(t + 1, max_timestamp_id) for t in x.timestamps] if len(x.timestamps) > 0 else all_timestamp_ids)),
@@ -162,6 +356,30 @@ class FLEX(nn.Module):
     def scale(self, embedding):
         return embedding / self.embedding_range
 
+    def entity_token(self, idx):
+        feature = convert_to_feature(self.scale(self.entity_feature_embedding(idx)))
+        logic = torch.zeros_like(feature).to(feature.device)
+        time_feature = torch.zeros_like(feature).to(feature.device)
+        time_logic = torch.zeros_like(feature).to(feature.device)
+        time_density = torch.zeros_like(feature).to(feature.device)
+        return feature, logic, time_feature, time_logic, time_density
+
+    def relation_token(self, idx):
+        feature = convert_to_feature(self.scale(self.relation_feature_embedding(idx)))
+        logic = convert_to_logic(self.scale(self.relation_logic_embedding(idx)))
+        time_feature = convert_to_time_feature(self.scale(self.relation_time_feature_embedding(idx)))
+        time_logic = convert_to_time_logic(self.scale(self.relation_time_logic_embedding(idx)))
+        time_density = convert_to_time_density(self.scale(self.relation_time_density_embedding(idx)))
+        return feature, logic, time_feature, time_logic, time_density
+
+    def timestamp_token(self, idx):
+        time_feature = convert_to_time_feature(self.scale(self.timestamp_time_feature_embedding(idx)))
+        feature = torch.zeros_like(time_feature).to(time_feature.device)
+        logic = torch.zeros_like(feature).to(feature.device)
+        time_logic = torch.zeros_like(feature).to(feature.device)
+        time_density = torch.zeros_like(feature).to(feature.device)
+        return feature, logic, time_feature, time_logic, time_density
+
     def forward(self, positive_sample, negative_sample, subsampling_weight, batch_queries_dict, batch_idxs_dict):
         return self.forward_FLEX(positive_sample, negative_sample, subsampling_weight, batch_queries_dict, batch_idxs_dict)
 
@@ -169,6 +387,7 @@ class FLEX(nn.Module):
                      batch_queries_dict: Dict[QueryStructure, torch.Tensor],
                      batch_idxs_dict: Dict[QueryStructure, List[List[int]]]):
         # 1. 用 batch_queries_dict 将 查询 嵌入
+        all_idxs = []
         for query_structure in batch_queries_dict:
             query_name, query_args = query_structure
             query_tensor = batch_queries_dict[query_structure]
@@ -179,21 +398,19 @@ class FLEX(nn.Module):
                 arg_name = query_args[i]
                 tensor = query_tensor[:, i]
                 if is_entity(arg_name):
-                    embedding = self.entity_feature_embedding(tensor)
+                    token_embedding = self.entity_token(tensor)
                 elif is_relation(arg_name):
-                    embedding = self.relation_feature_embedding(tensor)
+                    token_embedding = self.relation_token(tensor)
                 elif is_timestamp(arg_name):
-                    embedding = self.timestamp_feature_embedding
+                    token_embedding = self.timestamp_token(tensor)
                 else:
                     raise Exception("Unknown Args %s" % arg_name)
-                tensor_args.append(embedding)
+                tensor_args.append(token_embedding)
             predict = func(*tensor_args)
             all_idxs.extend(query_idxs)
 
-
         all_idxs, all_feature, all_logic = [], [], []
         all_union_idxs, all_union_feature, all_union_logic = [], [], []
-
 
         if len(all_feature) > 0:
             all_feature = torch.cat(all_feature, dim=0)  # (B, d)
