@@ -5,7 +5,7 @@
 @description: null
 """
 from collections import defaultdict
-from typing import List, Dict
+from typing import List, Dict, Tuple
 
 import click
 import torch
@@ -13,7 +13,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
-from ComplexTemporalQueryData import ICEWS05_15, ICEWS14, ComplexTemporalQueryDatasetCachePath, ComplexQueryData, TYPE_queries_answers
+from ComplexTemporalQueryData import ICEWS05_15, ICEWS14, ComplexTemporalQueryDatasetCachePath, ComplexQueryData, TYPE_train_queries_answers
 from ComplexTemporalQueryDataloader import TestDataset, TrainDataset
 from toolbox.data.dataloader import SingledirectionalOneShotIterator
 from toolbox.exp.Experiment import Experiment
@@ -395,9 +395,9 @@ class MyExperiment(Experiment):
         self.log("Training info:")
         for query_structure_name in train_queries_answers:
             self.log(query_structure_name + ": " + str(len(train_queries_answers[query_structure_name]["queries_answers"])))
-        train_path_queries: TYPE_queries_answers = {}
+        train_path_queries: TYPE_train_queries_answers = {}
         # List[Tuple[List[int], Set[int]]]
-        train_other_queries: TYPE_queries_answers = {}
+        train_other_queries: TYPE_train_queries_answers = {}
         path_list = ["Pe", "Pt", "Pe2", 'Pe3']
         for query_structure_name in train_queries_answers:
             if query_structure_name in path_list:
@@ -466,10 +466,10 @@ class MyExperiment(Experiment):
                 self.debug("Resumed from score %.4f." % best_score)
                 self.debug("Take a look at the performance after resumed.")
                 self.debug("Validation (step: %d):" % start_step)
-                result = self.evaluate(model, valid_easy_answers, valid_hard_answers, valid_dataloader, test_batch_size, test_device)
+                result = self.evaluate(model, valid_dataloader, test_batch_size, test_device)
                 best_score = self.visual_result(start_step + 1, result, "Valid")
                 self.debug("Test (step: %d):" % start_step)
-                result = self.evaluate(model, test_easy_answers, test_hard_answers, test_dataloader, test_batch_size, test_device)
+                result = self.evaluate(model, test_dataloader, test_batch_size, test_device)
                 best_test_score = self.visual_result(start_step + 1, result, "Test")
         else:
             model.init()
@@ -521,7 +521,7 @@ class MyExperiment(Experiment):
                 with torch.no_grad():
                     print("")
                     self.debug("Validation (step: %d):" % (step + 1))
-                    result = self.evaluate(model, valid_easy_answers, valid_hard_answers, valid_dataloader, test_batch_size, test_device)
+                    result = self.evaluate(model, valid_dataloader, test_batch_size, test_device)
                     score = self.visual_result(step + 1, result, "Valid")
                     if score >= best_score:
                         self.success("current score=%.4f > best score=%.4f" % (score, best_score))
@@ -537,7 +537,7 @@ class MyExperiment(Experiment):
                 with torch.no_grad():
                     print("")
                     self.debug("Test (step: %d):" % (step + 1))
-                    result = self.evaluate(model, test_easy_answers, test_hard_answers, test_dataloader, test_batch_size, test_device)
+                    result = self.evaluate(model, test_dataloader, test_batch_size, test_device)
                     score = self.visual_result(step + 1, result, "Test")
                     if score >= best_test_score:
                         best_test_score = score
@@ -550,19 +550,20 @@ class MyExperiment(Experiment):
         model.to(device)
         optimizer.zero_grad()
 
-        positive_sample, negative_sample, subsampling_weight, batch_queries, query_structures = next(train_iterator)
-        batch_queries_dict: Dict[List[str], list] = defaultdict(list)
-        batch_idxs_dict: Dict[List[str], List[int]] = defaultdict(list)
+        query_name, args, batch_queries, positive_answer, negative_answer, subsampling_weight = next(train_iterator)
+        batch_queries_dict: Dict[Tuple[str, List[str]], list] = defaultdict(list)
+        batch_idxs_dict: Dict[Tuple[str, List[str]], List[int]] = defaultdict(list)
         for i, query in enumerate(batch_queries):  # group queries with same structure
-            batch_queries_dict[query_structures[i]].append(query)
-            batch_idxs_dict[query_structures[i]].append(i)
+            query_schema = (query_name[i], args[i])
+            batch_queries_dict[query_schema].append(query)
+            batch_idxs_dict[query_schema].append(i)
         for query_structure in batch_queries_dict:
             batch_queries_dict[query_structure] = torch.LongTensor(batch_queries_dict[query_structure]).to(device)
-        positive_sample = positive_sample.to(device)
-        negative_sample = negative_sample.to(device)
+        positive_answer = positive_answer.to(device)
+        negative_answer = negative_answer.to(device)
         subsampling_weight = subsampling_weight.to(device)
 
-        positive_logit, negative_logit, subsampling_weight, _ = model(positive_sample, negative_sample, subsampling_weight, batch_queries_dict, batch_idxs_dict)
+        positive_logit, negative_logit, subsampling_weight, _ = model(positive_answer, negative_answer, subsampling_weight, batch_queries_dict, batch_idxs_dict)
 
         negative_score = F.logsigmoid(-negative_logit).mean(dim=1)
         positive_score = F.logsigmoid(positive_logit).squeeze(dim=1)
@@ -581,7 +582,7 @@ class MyExperiment(Experiment):
         }
         return log
 
-    def evaluate(self, model, easy_answers, hard_answers, test_dataloader, test_batch_size, device="cuda:0"):
+    def evaluate(self, model, test_dataloader, test_batch_size, device="cuda:0"):
         model.to(device)
         total_steps = len(test_dataloader)
         progbar = Progbar(max_step=total_steps)
@@ -590,17 +591,18 @@ class MyExperiment(Experiment):
         h10 = None
         batch_queries_dict = defaultdict(list)
         batch_idxs_dict = defaultdict(list)
-        for negative_sample, queries, queries_unflatten, query_structures in test_dataloader:
+        for candidate_answer, query_name, args, batch_queries, easy_answer, hard_answer in test_dataloader:
             batch_queries_dict.clear()
             batch_idxs_dict.clear()
-            for i, query in enumerate(queries):
-                batch_queries_dict[query_structures[i]].append(query)
-                batch_idxs_dict[query_structures[i]].append(i)
-            for query_structure in batch_queries_dict:
-                batch_queries_dict[query_structure] = torch.LongTensor(batch_queries_dict[query_structure]).to(device)
-            negative_sample = negative_sample.to(device)
+            for i, query in enumerate(batch_queries):
+                query_schema = (query_name[i], args[i])
+                batch_queries_dict[query_schema].append(query)
+                batch_idxs_dict[query_schema].append(i)
+            for query_schema in batch_queries_dict:
+                batch_queries_dict[query_schema] = torch.LongTensor(batch_queries_dict[query_schema]).to(device)
+            candidate_answer = candidate_answer.to(device)
 
-            _, negative_logit, _, idxs = model(None, negative_sample, None, batch_queries_dict, batch_idxs_dict)
+            _, negative_logit, _, idxs = model(None, candidate_answer, None, batch_queries_dict, batch_idxs_dict)
             queries_unflatten = [queries_unflatten[i] for i in idxs]
             query_structures = [query_structures[i] for i in idxs]
             argsort = torch.argsort(negative_logit, dim=1, descending=True)
@@ -614,7 +616,7 @@ class MyExperiment(Experiment):
                                            argsort,
                                            torch.arange(model.nentity).float().repeat(argsort.shape[0], 1).to(device)
                                            )  # achieve the ranking of all entities
-            for idx, (i, query, query_structure) in enumerate(zip(argsort[:, 0], queries_unflatten, query_structures)):
+            for idx, (i, query, query_schema) in enumerate(zip(argsort[:, 0], queries_unflatten, query_structures)):
                 hard_answer = hard_answers[query]
                 easy_answer = easy_answers[query]
                 num_hard = len(hard_answer)
@@ -631,7 +633,7 @@ class MyExperiment(Experiment):
                 h1 = torch.mean((cur_ranking <= 1).float()).item()
                 h3 = torch.mean((cur_ranking <= 3).float()).item()
                 h10 = torch.mean((cur_ranking <= 10).float()).item()
-                query_structure_name = query_name_dict[query_structure]
+                query_structure_name = query_name_dict[query_schema]
                 logs[query_structure_name].append({
                     'MRR': mrr,
                     'hits@1': h1,

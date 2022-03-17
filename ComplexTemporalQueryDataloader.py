@@ -11,10 +11,10 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset
 
-from ComplexTemporalQueryData import TYPE_queries_answers
+from ComplexTemporalQueryData import TYPE_train_queries_answers, TYPE_test_queries_answers
 
 
-def flatten(queries_answers: TYPE_queries_answers) -> List[Tuple[str, List[str], List[int], Set[int]]]:
+def flatten_train(queries_answers: TYPE_train_queries_answers) -> List[Tuple[str, List[str], List[int], Set[int]]]:
     res = []
     for query_name, query_schema in queries_answers.items():
         args: List[str] = query_schema["args"]
@@ -25,8 +25,8 @@ def flatten(queries_answers: TYPE_queries_answers) -> List[Tuple[str, List[str],
 
 
 class TrainDataset(Dataset):
-    def __init__(self, queries_answers: TYPE_queries_answers, nentity: int, nrelation: int, negative_sample_size: int):
-        self.all_data: List[Tuple[str, List[str], List[int], Set[int]]] = flatten(queries_answers)
+    def __init__(self, queries_answers: TYPE_train_queries_answers, nentity: int, nrelation: int, negative_sample_size: int):
+        self.all_data: List[Tuple[str, List[str], List[int], Set[int]]] = flatten_train(queries_answers)
         random.shuffle(self.all_data)
         self.len: int = len(self.all_data)
         self.nentity: int = nentity
@@ -78,26 +78,36 @@ class TrainDataset(Dataset):
         return count
 
 
+def flatten_test(queries_answers: TYPE_test_queries_answers) -> List[Tuple[str, List[str], List[int], Set[int], Set[int]]]:
+    res = []
+    for query_name, query_schema in queries_answers.items():
+        args: List[str] = query_schema["args"]
+        qa_list: List[Tuple[List[int], Set[int], Set[int]]] = query_schema["queries_answers"]
+        for query, easy_answer, hard_answer in qa_list:
+            res.append((query_name, args, query, easy_answer, hard_answer))
+    return res
+
+
 class TestDataset(Dataset):
-    def __init__(self, queries, nentity, nrelation):
-        self.len = len(queries)
-        self.queries = queries
-        self.nentity = nentity
-        self.nrelation = nrelation
+    def __init__(self, queries_answers: TYPE_test_queries_answers, nentity, nrelation):
+        self.all_data: List[Tuple[str, List[str], List[int], Set[int], Set[int]]] = flatten_test(queries_answers)
+        random.shuffle(self.all_data)
+        self.len: int = len(self.all_data)
+        self.nentity: int = nentity
+        self.nrelation: int = nrelation
 
     def __len__(self):
         return self.len
 
     def __getitem__(self, idx):
-        query = self.queries[idx][0]
-        query_structure = self.queries[idx][1]
-        negative_sample = torch.LongTensor(range(self.nentity))
-        return negative_sample, flatten(query), query, query_structure
+        query_name, args, query, easy_answer, hard_answer = self.all_data[idx]
+        candidate_answer = torch.LongTensor(range(self.nentity))
+        hard_answer = set(hard_answer) - set(easy_answer)
+        return candidate_answer, query_name, args, query, easy_answer, hard_answer
 
     @staticmethod
     def collate_fn(data):
-        negative_sample = torch.stack([_[0] for _ in data], dim=0)
-        query = [_[1] for _ in data]
-        query_unflatten = [_[2] for _ in data]
-        query_structure = [_[3] for _ in data]
-        return negative_sample, query, query_unflatten, query_structure
+        candidate_answer, query_name, args, query, easy_answer, hard_answer = tuple(zip(data))
+        query = torch.cat(query, dim=0)
+        candidate_answer = torch.cat(candidate_answer, dim=0)
+        return candidate_answer, query_name, args, query, easy_answer, hard_answer

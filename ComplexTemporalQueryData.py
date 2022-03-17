@@ -475,7 +475,8 @@ class ComplexTemporalQueryDatasetCachePath(TemporalKnowledgeDatasetCachePath):
         self.cache_test_queries_answers_path = self.cache_path / "test_queries_answers.pkl"
 
 
-TYPE_queries_answers = Dict[str, Dict[str, Union[List[str], List[Tuple[List[int], Set[int]]]]]]
+TYPE_train_queries_answers = Dict[str, Dict[str, Union[List[str], List[Tuple[List[int], Set[int]]]]]]
+TYPE_test_queries_answers = Dict[str, Dict[str, Union[List[str], List[Tuple[List[int], Set[int], Set[int]]]]]]
 
 
 class ComplexQueryData(TemporalKnowledgeData):
@@ -493,7 +494,7 @@ class ComplexQueryData(TemporalKnowledgeData):
         # 1. `structure name` is the name of a function (named query function), parsed to AST and eval to get results.
         # 2. `args name list` is the arg list of query function.
         # 3. valid_queries_answers and test_queries_answers are the same type as train_queries_answers
-        self.train_queries_answers: TYPE_queries_answers = {
+        self.train_queries_answers: TYPE_train_queries_answers = {
             "Pe_aPt": {
                 "args": ["e1", "r1", "e2", "r2", "e3"],
                 "queries_answers": [
@@ -503,8 +504,8 @@ class ComplexQueryData(TemporalKnowledgeData):
                 ]
             }
         }
-        self.valid_queries_answers: TYPE_queries_answers = {}
-        self.test_queries_answers: TYPE_queries_answers = {}
+        self.valid_queries_answers: TYPE_test_queries_answers = {}
+        self.test_queries_answers: TYPE_test_queries_answers = {}
         # meta
         self.query_meta = {
             "Pe_aPt": {
@@ -621,39 +622,71 @@ class ComplexQueryData(TemporalKnowledgeData):
             "t2u", "Pe_t2u",  # t-2u, t-up
         ]
         # how many samples should we generate?
-        test_sample_count = self.train_triples_count // 25
-        max_sample_count = self.train_triples_count + test_sample_count + test_sample_count
-        sample_counts = {
+        max_sample_count = self.train_triples_count
+        train_sample_counts = {
             # entity
             "Pe2": max_sample_count,
             "Pe3": max_sample_count,
             "e2i": max_sample_count,
             "e3i": max_sample_count,  # 2p, 3p, 2i, 3i
-            "e2i_NPe": max_sample_count // 8,
-            "e2i_PeN": max_sample_count // 8,
-            "Pe_e2i_Pe_NPe": max_sample_count // 8,
-            "e2i_N": max_sample_count // 8,
-            "e3i_N": max_sample_count // 8,  # npi, pni, inp, 2in, 3in
+            "e2i_NPe": max_sample_count // 10,
+            "e2i_PeN": max_sample_count // 10,
+            "Pe_e2i_Pe_NPe": max_sample_count // 10,
+            "e2i_N": max_sample_count // 10,
+            "e3i_N": max_sample_count // 10,  # npi, pni, inp, 2in, 3in
             # time
-            "Pt_lPe": max_sample_count // 8,
-            "Pt_rPe": max_sample_count // 8,
-            "Pe_Pt": max_sample_count // 8,
-            "Pe_aPt": max_sample_count // 8,
-            "Pe_bPt": max_sample_count // 8,
-            "Pe_nPt": max_sample_count // 8,  # t-1p, t-2p
+            "Pt_lPe": max_sample_count // 10,
+            "Pt_rPe": max_sample_count // 10,
+            "Pe_Pt": max_sample_count // 10,
+            "Pe_aPt": max_sample_count // 10,
+            "Pe_bPt": max_sample_count // 10,
+            "Pe_nPt": max_sample_count // 10,  # t-1p, t-2p
             "t2i": max_sample_count,
             "t3i": max_sample_count,
-            "Pt_le2i": max_sample_count // 8,
-            "Pt_re2i": max_sample_count // 8,
-            "Pe_at2i": max_sample_count // 8,
-            "Pe_bt2i": max_sample_count // 8,
-            "Pe_nt2i": max_sample_count // 8,
-            "between": max_sample_count // 8,  # t-2i, t-3i
-            "t2i_NPt": max_sample_count // 8,
-            "t2i_PtN": max_sample_count // 8,
-            "Pe_t2i_PtPe_NPt": max_sample_count // 8,
-            "t2i_N": max_sample_count // 8,
-            "t3i_N": max_sample_count // 8,  # t-npi, t-pni, t-inp, t-2in, t-3in
+            "Pt_le2i": max_sample_count // 10,
+            "Pt_re2i": max_sample_count // 10,
+            "Pe_at2i": max_sample_count // 10,
+            "Pe_bt2i": max_sample_count // 10,
+            "Pe_nt2i": max_sample_count // 10,
+            "between": max_sample_count // 10,  # t-2i, t-3i
+            "t2i_NPt": max_sample_count // 10,
+            "t2i_PtN": max_sample_count // 10,
+            "Pe_t2i_PtPe_NPt": max_sample_count // 10,
+            "t2i_N": max_sample_count // 10,
+            "t3i_N": max_sample_count // 10,  # t-npi, t-pni, t-inp, t-2in, t-3in
+        }
+        test_sample_count = self.train_triples_count // 25
+        test_sample_counts = {
+            # entity
+            "Pe2": test_sample_count,
+            "Pe3": test_sample_count,
+            "e2i": test_sample_count,
+            "e3i": test_sample_count,  # 2p, 3p, 2i, 3i
+            "e2i_NPe": test_sample_count,
+            "e2i_PeN": test_sample_count,
+            "Pe_e2i_Pe_NPe": test_sample_count,
+            "e2i_N": test_sample_count,
+            "e3i_N": test_sample_count,  # npi, pni, inp, 2in, 3in
+            # time
+            "Pt_lPe": test_sample_count,
+            "Pt_rPe": test_sample_count,
+            "Pe_Pt": test_sample_count,
+            "Pe_aPt": test_sample_count,
+            "Pe_bPt": test_sample_count,
+            "Pe_nPt": test_sample_count,  # t-1p, t-2p
+            "t2i": test_sample_count,
+            "t3i": test_sample_count,
+            "Pt_le2i": test_sample_count,
+            "Pt_re2i": test_sample_count,
+            "Pe_at2i": test_sample_count,
+            "Pe_bt2i": test_sample_count,
+            "Pe_nt2i": test_sample_count,
+            "between": test_sample_count,  # t-2i, t-3i
+            "t2i_NPt": test_sample_count,
+            "t2i_PtN": test_sample_count,
+            "Pe_t2i_PtPe_NPt": test_sample_count,
+            "t2i_N": test_sample_count,
+            "t3i_N": test_sample_count,  # t-npi, t-pni, t-inp, t-2in, t-3in
             # entity
             "e2i_Pe": test_sample_count,
             "Pe_e2i": test_sample_count,  # pi, ip
@@ -684,7 +717,7 @@ class ComplexQueryData(TemporalKnowledgeData):
             we use dataloader of PyTorch for sampling.
             """
 
-            def __init__(self, train_parser, valid_parser, test_parser, query_structure_name, sample_count):
+            def __init__(self, train_parser, valid_parser, test_parser, query_structure_name, sample_count, for_test=False):
                 fast_query_structure_name = f"fast_{query_structure_name}"
                 if fast_query_structure_name in train_parser.fast_ops.keys():
                     # fast sampling
@@ -697,14 +730,15 @@ class ComplexQueryData(TemporalKnowledgeData):
                 self.test_query_structure_func = test_parser.eval(query_structure_name)
                 self.query_structure_name = query_structure_name
                 self.sample_count = sample_count
+                self.for_test = for_test
 
             def __len__(self):
                 return self.sample_count
 
             def __getitem__(self, idx):
-                return achieve_answers(self.train_query_structure_func, self.valid_query_structure_func, self.test_query_structure_func)
+                return achieve_answers(self.train_query_structure_func, self.valid_query_structure_func, self.test_query_structure_func, self.for_test)
 
-        def achieve_answers(train_query_structure_func, valid_query_structure_func, test_query_structure_func):
+        def achieve_answers(train_query_structure_func, valid_query_structure_func, test_query_structure_func, for_test=False):
             answers = set()
             valid_answers = set()
             test_answers = set()
@@ -720,11 +754,15 @@ class ComplexQueryData(TemporalKnowledgeData):
                     answers = sampling_query_answers.answers
                     fixed = placeholder2fixed(placeholders)
                     valid_answers = valid_query_structure_func(*fixed).answers
+                    if for_test and len(valid_answers) <= len(answers):
+                        answers = set()
                     test_answers = test_query_structure_func(*fixed).answers
                 elif sampling_query_answers.timestamps is not None and len(sampling_query_answers.timestamps) > 0:
                     answers = sampling_query_answers.timestamps
                     fixed = placeholder2fixed(placeholders)
                     valid_answers = valid_query_structure_func(*fixed).timestamps
+                    if for_test and len(valid_answers) <= len(answers):
+                        answers = set()
                     test_answers = test_query_structure_func(*fixed).timestamps
                 else:
                     answers = set()
@@ -738,60 +776,79 @@ class ComplexQueryData(TemporalKnowledgeData):
 
         for query_structure_name in query_structure_name_list:
             print(query_structure_name)
-            sample_count = sample_counts[query_structure_name]
-            num_workers = 16
-            sampling_loader = DataLoader(
-                SamplingDataset(train_parser, valid_parser, test_parser, query_structure_name, sample_count),
-                batch_size=512,
-                num_workers=num_workers,
-                collate_fn=collate_fn
-            )
             train_query_structure_func = train_parser.eval(query_structure_name)
-            # valid_query_structure_func = valid_parser.eval(query_structure_name)
-            # test_query_structure_func = test_parser.eval(query_structure_name)
+            param_name_list = get_param_name_list(train_query_structure_func)
+            num_workers = 16
             train_queries_answers = []
             valid_queries_answers = []
             test_queries_answers = []
-            bar = Progbar(sample_count)
-            i = 0
-            for batch_queries, batch_answers, batch_valid_answers, batch_test_answers in sampling_loader:
-                # queries, answers, valid_answers, test_answers = achieve_answers(train_query_structure_func, valid_query_structure_func, test_query_structure_func)
-                for queries, answers, valid_answers, test_answers in zip(batch_queries, batch_answers, batch_valid_answers, batch_test_answers):
-                    train_queries_answers.append((queries, answers))
-                    valid_queries_answers.append((queries, valid_answers))
-                    test_queries_answers.append((queries, test_answers))
-                    i += 1
-                    bar.update(i, {"train": len(answers), "valid": len(valid_answers), "test": len(test_answers)})
-
-            param_name_list = get_param_name_list(train_query_structure_func)
-            self.train_queries_answers[query_structure_name] = {
-                "args": param_name_list,
-                "queries_answers": train_queries_answers
-            }
-            self.valid_queries_answers[query_structure_name] = {
-                "args": param_name_list,
-                "queries_answers": valid_queries_answers
-            }
-            self.test_queries_answers[query_structure_name] = {
-                "args": param_name_list,
-                "queries_answers": test_queries_answers
-            }
-            if f"{query_structure_name}_DM" in qs_DM:
-                # De Morgan
-                # same input and same answers, but function structure transformed.
-                query_structure_name = f"{query_structure_name}_DM"
+            if query_structure_name in train_sample_counts:
+                sample_count = train_sample_counts[query_structure_name]
+                sampling_loader = DataLoader(
+                    SamplingDataset(train_parser, valid_parser, test_parser, query_structure_name, sample_count),
+                    batch_size=512,
+                    num_workers=num_workers,
+                    collate_fn=collate_fn
+                )
+                bar = Progbar(sample_count)
+                i = 0
+                for batch_queries, batch_answers, batch_valid_answers, batch_test_answers in sampling_loader:
+                    # queries, answers, valid_answers, test_answers = achieve_answers(train_query_structure_func, valid_query_structure_func, test_query_structure_func)
+                    for queries, answers, valid_answers, test_answers in zip(batch_queries, batch_answers, batch_valid_answers, batch_test_answers):
+                        train_queries_answers.append((queries, answers))
+                        i += 1
+                        bar.update(i, {"train": len(answers), "valid": len(valid_answers), "test": len(test_answers)})
                 self.train_queries_answers[query_structure_name] = {
                     "args": param_name_list,
                     "queries_answers": train_queries_answers
                 }
+                if f"{query_structure_name}_DM" in qs_DM:
+                    # De Morgan
+                    # same input and same answers, but function structure transformed.
+                    query_structure_name = f"{query_structure_name}_DM"
+                    self.train_queries_answers[query_structure_name] = {
+                        "args": param_name_list,
+                        "queries_answers": train_queries_answers
+                    }
+
+            if query_structure_name in test_sample_counts:
+                sample_count = test_sample_counts[query_structure_name]
+                sampling_loader = DataLoader(
+                    SamplingDataset(train_parser, valid_parser, test_parser, query_structure_name, sample_count, for_test=True),
+                    batch_size=512,
+                    num_workers=num_workers,
+                    collate_fn=collate_fn
+                )
+                bar = Progbar(sample_count)
+                i = 0
+                for batch_queries, batch_answers, batch_valid_answers, batch_test_answers in sampling_loader:
+                    # queries, answers, valid_answers, test_answers = achieve_answers(train_query_structure_func, valid_query_structure_func, test_query_structure_func)
+                    for queries, answers, valid_answers, test_answers in zip(batch_queries, batch_answers, batch_valid_answers, batch_test_answers):
+                        valid_queries_answers.append((queries, answers, valid_answers))
+                        test_queries_answers.append((queries, answers, test_answers))
+                        i += 1
+                        bar.update(i, {"train": len(answers), "valid": len(valid_answers), "test": len(test_answers)})
                 self.valid_queries_answers[query_structure_name] = {
                     "args": param_name_list,
                     "queries_answers": valid_queries_answers
                 }
                 self.test_queries_answers[query_structure_name] = {
-                    "args": param_name_list,
-                    "queries_answers": test_queries_answers
-                }
+                "args": param_name_list,
+                "queries_answers": test_queries_answers
+            }
+
+                if f"{query_structure_name}_DM" in qs_DM:
+                    # De Morgan
+                    # same input and same answers, but function structure transformed.
+                    query_structure_name = f"{query_structure_name}_DM"
+                    self.valid_queries_answers[query_structure_name] = {
+                        "args": param_name_list,
+                        "queries_answers": valid_queries_answers
+                    }
+                    self.test_queries_answers[query_structure_name] = {
+                        "args": param_name_list,
+                        "queries_answers": test_queries_answers
+                    }
 
         # 3. calculate meta
         def avg_answers_count(qa):

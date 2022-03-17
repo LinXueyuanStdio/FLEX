@@ -30,3 +30,4 @@ scipy~=1.6.2
 fastapi~=0.70.1
 requests~=2.25.1
 uvicorn~=0.17.5
+rich
