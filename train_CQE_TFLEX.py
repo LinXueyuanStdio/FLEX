@@ -4,13 +4,8 @@
 @date: 2021/10/26
 @description: null
 """
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-import collections
 from collections import defaultdict
-from typing import Set, List, Tuple, Dict
+from typing import List, Dict
 
 import click
 import torch
@@ -25,7 +20,6 @@ from toolbox.exp.Experiment import Experiment
 from toolbox.exp.OutputSchema import OutputSchema
 from toolbox.utils.Progbar import Progbar
 from toolbox.utils.RandomSeeds import set_seeds
-from util import flatten_query
 
 
 def convert_to_logic(x):
@@ -395,12 +389,8 @@ class MyExperiment(Experiment):
 
         # 1. build train dataset
         train_queries_answers = data.train_queries_answers
-        valid_queries = data.valid_queries
-        valid_hard_answers = data.valid_hard_answers
-        valid_easy_answers = data.valid_easy_answers
-        test_queries = data.test_queries
-        test_hard_answers = data.test_hard_answers
-        test_easy_answers = data.test_easy_answers
+        valid_queries_answers = data.valid_queries_answers
+        test_queries_answers = data.test_queries_answers
 
         self.log("Training info:")
         for query_structure_name in train_queries_answers:
@@ -433,22 +423,20 @@ class MyExperiment(Experiment):
             train_other_iterator = None
 
         self.log("Validation info:")
-        for query_structure_name in valid_queries:
-            self.log(query_structure_name + ": " + str(len(valid_queries[query_structure_name]["queries_answers"])))
-        valid_queries = flatten_query(valid_queries)
+        for query_structure_name in valid_queries_answers:
+            self.log(query_structure_name + ": " + str(len(valid_queries_answers[query_structure_name]["queries_answers"])))
         valid_dataloader = DataLoader(
-            TestDataset(valid_queries, entity_count, relation_count),
+            TestDataset(valid_queries_answers, entity_count, relation_count),
             batch_size=test_batch_size,
             num_workers=cpu_num // 2,
             collate_fn=TestDataset.collate_fn
         )
 
         self.log("Test info:")
-        for query_structure_name in test_queries:
-            self.log(query_structure_name + ": " + str(len(test_queries[query_structure_name]["queries_answers"])))
-        test_queries = flatten_query(test_queries)
+        for query_structure_name in test_queries_answers:
+            self.log(query_structure_name + ": " + str(len(test_queries_answers[query_structure_name]["queries_answers"])))
         test_dataloader = DataLoader(
-            TestDataset(test_queries, entity_count, relation_count),
+            TestDataset(test_queries_answers, entity_count, relation_count),
             batch_size=test_batch_size,
             num_workers=cpu_num // 2,
             collate_fn=TestDataset.collate_fn
@@ -563,8 +551,8 @@ class MyExperiment(Experiment):
         optimizer.zero_grad()
 
         positive_sample, negative_sample, subsampling_weight, batch_queries, query_structures = next(train_iterator)
-        batch_queries_dict: Dict[List[str], list] = collections.defaultdict(list)
-        batch_idxs_dict: Dict[List[str], List[int]] = collections.defaultdict(list)
+        batch_queries_dict: Dict[List[str], list] = defaultdict(list)
+        batch_idxs_dict: Dict[List[str], List[int]] = defaultdict(list)
         for i, query in enumerate(batch_queries):  # group queries with same structure
             batch_queries_dict[query_structures[i]].append(query)
             batch_idxs_dict[query_structures[i]].append(i)
@@ -597,11 +585,11 @@ class MyExperiment(Experiment):
         model.to(device)
         total_steps = len(test_dataloader)
         progbar = Progbar(max_step=total_steps)
-        logs = collections.defaultdict(list)
+        logs = defaultdict(list)
         step = 0
         h10 = None
-        batch_queries_dict = collections.defaultdict(list)
-        batch_idxs_dict = collections.defaultdict(list)
+        batch_queries_dict = defaultdict(list)
+        batch_idxs_dict = defaultdict(list)
         for negative_sample, queries, queries_unflatten, query_structures in test_dataloader:
             batch_queries_dict.clear()
             batch_idxs_dict.clear()
@@ -655,7 +643,7 @@ class MyExperiment(Experiment):
             step += 1
             progbar.update(step, [("Hits @10", h10)])
 
-        metrics = collections.defaultdict(lambda: collections.defaultdict(int))
+        metrics = defaultdict(lambda: defaultdict(int))
         for query_structure_name in logs:
             for metric in logs[query_structure_name][0].keys():
                 if metric in ['hard']:

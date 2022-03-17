@@ -25,13 +25,12 @@
 # 3. custom dataset
 
 import os
-import shutil
 import tarfile
-import urllib.request
 import zipfile
 from pathlib import Path
 from typing import Dict, Union
 
+from toolbox.utils.Download import download_to_path
 from toolbox.utils.Log import Log
 
 
@@ -89,13 +88,11 @@ class RemoteDataset:
         if self.url.endswith('.tar.gz') or self.url.endswith('.tgz'):
             if self.tar.exists():
                 return
-            with urllib.request.urlopen(self.url) as response, open(str(self.tar), 'wb') as out_file:
-                shutil.copyfileobj(response, out_file)
+            download_to_path([self.url], str(self.tar))
         elif self.url.endswith('.zip'):
             if self.zip.exists():
                 return
-            with urllib.request.urlopen(self.url) as response, open(str(self.zip), 'wb') as out_file:
-                shutil.copyfileobj(response, out_file)
+            download_to_path([self.url], str(self.zip))
         else:
             raise NotImplementedError("Unknown compression format")
 
@@ -190,6 +187,7 @@ class BaseDatasetSchema:
 
     def __repr__(self):
         return f"{self.__class__.__name__}({self.root_path})"
+
 
 class RelationalTripletDatasetSchema(BaseDatasetSchema):
     """./data
