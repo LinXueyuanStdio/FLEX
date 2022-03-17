@@ -475,6 +475,9 @@ class ComplexTemporalQueryDatasetCachePath(TemporalKnowledgeDatasetCachePath):
         self.cache_test_queries_answers_path = self.cache_path / "test_queries_answers.pkl"
 
 
+TYPE_queries_answers = Dict[str, Dict[str, Union[List[str], List[Tuple[List[int], Set[int]]]]]]
+
+
 class ComplexQueryData(TemporalKnowledgeData):
 
     def __init__(self,
@@ -490,7 +493,7 @@ class ComplexQueryData(TemporalKnowledgeData):
         # 1. `structure name` is the name of a function (named query function), parsed to AST and eval to get results.
         # 2. `args name list` is the arg list of query function.
         # 3. valid_queries_answers and test_queries_answers are the same type as train_queries_answers
-        self.train_queries_answers: Dict[str, Dict[str, Union[List[str], List[Tuple[List[int], Set[int]]]]]] = {
+        self.train_queries_answers: TYPE_queries_answers = {
             "Pe_aPt": {
                 "args": ["e1", "r1", "e2", "r2", "e3"],
                 "queries_answers": [
@@ -500,8 +503,8 @@ class ComplexQueryData(TemporalKnowledgeData):
                 ]
             }
         }
-        self.valid_queries_answers: Dict[str, Dict[str, Union[List[str], List[Tuple[List[int], Set[int]]]]]] = {}
-        self.test_queries_answers: Dict[str, Dict[str, Union[List[str], List[Tuple[List[int], Set[int]]]]]] = {}
+        self.valid_queries_answers: TYPE_queries_answers = {}
+        self.test_queries_answers: TYPE_queries_answers = {}
         # meta
         self.query_meta = {
             "Pe_aPt": {

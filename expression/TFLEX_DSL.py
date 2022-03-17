@@ -387,7 +387,7 @@ class SamplingParser(BasicParser):
         # fast sampling
         valid_e2i_o_list = [k for k, v in o_srt.items() if len(v) >= 2]
 
-        def fast_e2i_targeted(e1, r1, t1, e2, r2, t2, target:int):
+        def fast_e2i_targeted(e1, r1, t1, e2, r2, t2, target: int):
             (e1_idx, r1_idx, t1_idx), (e2_idx, r2_idx, t2_idx) = tuple(random.sample(list(o_srt[target]), k=2))
             e1.fill(e1_idx)
             r1.fill(r1_idx)
@@ -518,7 +518,7 @@ class SamplingParser(BasicParser):
             o_idx = random.choice(list(set(valid_e2i_o_list) & set(sro_t.keys())))
             q = fast_e2i_targeted(e1, r1, t1, e2, r2, t2, target=o_idx)
             return self.fast_function("Pe")(q, r3, t3)
-        
+
         self.fast_ops = {
             "fast_e2i": fast_e2i,
             "fast_e3i": fast_e3i,
@@ -531,7 +531,8 @@ class SamplingParser(BasicParser):
             "fast_Pe_Pt": fast_Pe_Pt,
             "fast_Pe_e2i": fast_Pe_e2i,
         }
-        # TODO Pe_t2i_PtPe_NPt 在 train 中有答案，在 test 中没有答案
+        # Pe_t2i_PtPe_NPt 在 train 中有答案，在 test 中没有答案
+        # 已解决：test中无答案则重新抽取
         super().__init__(variables=variables, neural_ops=dict(**neural_ops, **self.fast_ops))
         for _, qs in query_structures.items():
             self.eval(qs)
@@ -546,29 +547,25 @@ class SamplingParser(BasicParser):
 
 
 class NeuralParser(BasicParser):
-    def __init__(self):
-        # example
-        # qe = Pe(e,r,after(Pt(e,r,e)))
-
-        class QueryEmbedding:
-
-            def __init__(self, name):
-                print(name)
-                self.query_embedding = None
-
-        variables = {}
-        neural_ops = {
-            "AND": lambda q1, q2: QueryEmbedding(f"AND {(q1, q2)}"),
-            "OR": lambda q1, q2: QueryEmbedding(f"OR {(q1, q2)}"),
-            "NOT": lambda x: QueryEmbedding(f"NOT {x}"),
-            "EntityProjection": lambda s, r, t: QueryEmbedding(f"EntityProjection {(s, r, t)}"),
-            "TimeProjection": lambda s, r, o: QueryEmbedding(f"TimeProjection {(s, r, o)}"),
-            "TimeAnd": lambda q1, q2: QueryEmbedding(f"TimeAnd {(q1, q2)}"),
-            "TimeOr": lambda q1, q2: QueryEmbedding(f"TimeOr {(q1, q2)}"),
-            "TimeNot": lambda x: QueryEmbedding(f"TimeNot {x}"),
-            "TimeBefore": lambda x: QueryEmbedding(f"TimeBefore {x}"),
-            "TimeAfter": lambda x: QueryEmbedding(f"TimeAfter {x}"),
-            "TimeNext": lambda x: QueryEmbedding(f"TimeNext {x}"),
-        }
+    def __init__(self, neural_ops, variables=None):
+        if variables is None:
+            variables = {}
+        must_implement_neural_ops = [
+            "And",
+            "And3",
+            "Or",
+            "Not",
+            "EntityProjection",
+            "TimeProjection",
+            "TimeAnd",
+            "TimeAnd3",
+            "TimeOr",
+            "TimeNot",
+            "TimeBefore",
+            "TimeAfter",
+            "TimeNext",
+        ]
+        for op in must_implement_neural_ops:
+            if op not in neural_ops:
+                raise Exception(f"{op} Not Found! You MUST implement neural operation {op}")
         super().__init__(variables=variables, neural_ops=neural_ops)
-        self.ast_cache = {}
