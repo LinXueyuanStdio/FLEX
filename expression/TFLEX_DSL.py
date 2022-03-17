@@ -99,6 +99,14 @@ class BasicParser(Interpreter):
         }
         functions = dict(**neural_ops, **alias, **predefine)
         super().__init__(usersyms=dict(**variables, **functions))
+        self.func_cache = {}
+
+    def fast_function(self, func_name):
+        if func_name in self.func_cache:
+            return self.func_cache[func_name]
+        func = self.eval(func_name)
+        self.func_cache[func_name] = func
+        return func
 
 
 class SamplingParser(BasicParser):
@@ -536,14 +544,6 @@ class SamplingParser(BasicParser):
         super().__init__(variables=variables, neural_ops=dict(**neural_ops, **self.fast_ops))
         for _, qs in query_structures.items():
             self.eval(qs)
-        self.func_cache = {}
-
-    def fast_function(self, func_name):
-        if func_name in self.func_cache:
-            return self.func_cache[func_name]
-        func = self.eval(func_name)
-        self.func_cache[func_name] = func
-        return func
 
 
 class NeuralParser(BasicParser):
@@ -567,5 +567,5 @@ class NeuralParser(BasicParser):
         ]
         for op in must_implement_neural_ops:
             if op not in neural_ops:
-                raise Exception(f"{op} Not Found! You MUST implement neural operation {op}")
+                raise Exception(f"{op} Not Found! You MUST implement neural operation '{op}'")
         super().__init__(variables=variables, neural_ops=neural_ops)
