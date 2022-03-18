@@ -40,7 +40,7 @@ class TrainDataset(Dataset):
     def __getitem__(self, idx):
         query_name, args, query, answer = self.all_data[idx]
         tail = np.random.choice(list(answer))  # select one answer
-        subsampling_weight = self.count[query]  # answer count of query
+        subsampling_weight = self.count[query_name]  # answer count of query
         subsampling_weight = torch.sqrt(1 / torch.Tensor([subsampling_weight]))  # (1,)
         negative_sample_list = []
         negative_sample_size = 0
@@ -53,12 +53,14 @@ class TrainDataset(Dataset):
         negative_answer = np.concatenate(negative_sample_list)[:self.negative_sample_size]
         negative_answer = torch.from_numpy(negative_answer)  # (self.negative_sample_size,)
         positive_answer = torch.LongTensor([tail])  # (1,)
-        # query_name         : str
-        # args               : List[**str]
-        # query              : List[**int]
-        # positive_answer    : torch.LongTensor (1,)
-        # negative_answer    : torch.LongTensor (self.negative_sample_size,)
-        # subsampling_weight : torch.FloatTensor (1,)
+        query = torch.LongTensor(query)  # (N,)
+        #                                                                     (s, r, o, t) == (1, 7, 8, 5)
+        # query_name         : str                                            'Pe'
+        # args               : List[**str]                                    ['e1', 'r1', 't1']
+        # query              : List[**int]                                    [ 1,    7,    5  ]
+        # positive_answer    : torch.LongTensor (1,)                          Tensor([8])
+        # negative_answer    : torch.LongTensor (self.negative_sample_size,)  Tensor([100, 392, 499, ...])
+        # subsampling_weight : torch.FloatTensor (1,)                         Tensor([0.02])
         return query_name, args, query, positive_answer, negative_answer, subsampling_weight
 
     @staticmethod
