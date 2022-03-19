@@ -576,7 +576,7 @@ class FLEX(nn.Module):
         # 1. 用 batch_queries_dict 将 查询 嵌入
         all_idxs, all_feature, all_logic = [], [], []
         all_union_idxs, all_union_feature, all_union_logic = [], [], []
-        
+
         for query_structure in batch_queries_dict:
             query_name, query_args = query_structure
             query_tensor = batch_queries_dict[query_structure]  # BxL, B for batch size, L for query args length
