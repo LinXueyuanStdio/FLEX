@@ -61,7 +61,16 @@ query_structures = {
     "Pe_e2u_DM": "def Pe_e2u_DM(e1, r1, t1, e2, r2, t2, r3, t3): return Pe(And(Not(Pe(e1, r1, t1)), Not(Pe(e2, r2, t2))), r3, t3)",  # up-DM
     "t2u_DM": "def t2u_DM(e1, r1, e2, e3, r2, e4): return TimeAnd(TimeNot(Pt(e1, r1, e2)), TimeNot(Pt(e3, r2, e4)))",  # t-2u-DM
     "Pe_t2u_DM": "def Pe_t2u_DM(e1, r1, e2, e3, r2, e4, e5, r3, e6): return Pe(e1, r1, TimeAnd(TimeNot(Pt(e2, r2, e3)), TimeNot(Pt(e4, r3, e5))))",  # t-up-DM
+    # 9. union-DNF
+    "e2u_DNF": "def e2u_DNF(e1, r1, t1, e2, r2, t2): return Pe(e1, r1, t1), Pe(e2, r2, t2)",  # 2u_DNF
+    "Pe_e2u_DNF": "def Pe_e2u_DNF(e1, r1, t1, e2, r2, t2, r3, t3): return Pe(Pe(e1, r1, t1), r3, t3), Pe(Pe(e2, r2, t2), r3, t3)",  # up_DNF
+    "t2u_DNF": "def t2u_DNF(e1, r1, e2, e3, r2, e4): return Pt(e1, r1, e2), Pt(e3, r2, e4)",  # t-2u_DNF
+    "Pe_t2u_DNF": "def Pe_t2u_DNF(e1, r1, e2, e3, r2, e4, e5, r3, e6): return Pe(e1, r1, Pt(e2, r2, e3), Pe(e1, r1, Pt(e4, r3, e5))",  # t-up_DNF
 }
+union_query_structures = [
+    "e2u", "Pe_e2u",  # 2u, up
+    "t2u", "Pe_t2u",  # t-2u, t-up
+]
 train_query_structures = [
     # entity
     "Pe", "Pe2", "Pe3", "e2i", "e3i",  # 1p, 2p, 3p, 2i, 3i
@@ -79,7 +88,12 @@ test_query_structures = train_query_structures + [
     "t2i_Pe", "Pe_t2i",  # t-pi, t-ip
     "t2u", "Pe_t2u",  # t-2u, t-up
 ]
-
+#
+# def Pe_bt2i(e1, r1, e2, r2, e3, e4, r3, e5):
+#     if t1 in before(t2):
+#         return t2i(e2, r2, e3, e4, r3, e5)
+#     else:
+#         return t2i(e2, r2, e3, e4, r3, e5)
 
 class BasicParser(Interpreter):
     """
