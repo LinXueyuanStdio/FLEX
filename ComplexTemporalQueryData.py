@@ -782,6 +782,8 @@ class ComplexQueryData(TemporalKnowledgeData):
             train_queries_answers = []
             valid_queries_answers = []
             test_queries_answers = []
+
+            # 1. sampling train dataset
             if query_structure_name in train_sample_counts:
                 sample_count = train_sample_counts[query_structure_name]
                 sampling_loader = DataLoader(
@@ -815,11 +817,12 @@ class ComplexQueryData(TemporalKnowledgeData):
                         "queries_answers": train_queries_answers
                     }
 
+            # 2. sampling valid/test dataset
             if query_structure_name in test_sample_counts:
                 sample_count = test_sample_counts[query_structure_name]
                 sampling_loader = DataLoader(
                     SamplingDataset(train_parser, valid_parser, test_parser, query_structure_name, sample_count, for_test=True),
-                    batch_size=512,
+                    batch_size=128,
                     num_workers=num_workers,
                     collate_fn=collate_fn
                 )

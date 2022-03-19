@@ -17,6 +17,7 @@ import expression
 from ComplexTemporalQueryData import ICEWS05_15, ICEWS14, ComplexTemporalQueryDatasetCachePath, ComplexQueryData, TYPE_train_queries_answers
 from ComplexTemporalQueryDataloader import TestDataset, TrainDataset
 from expression.ParamSchema import is_entity, is_relation, is_timestamp
+from expression.TFLEX_DSL import union_query_structures
 from toolbox.data.dataloader import SingledirectionalOneShotIterator
 from toolbox.exp.Experiment import Experiment
 from toolbox.exp.OutputSchema import OutputSchema
@@ -231,6 +232,7 @@ class TemporalNegation(nn.Module):
         time_logic = 1 - time_logic
         return feature, logic, time_feature, time_logic, time_density
 
+
 class TemporalBefore(nn.Module):
     def __init__(self):
         super(TemporalBefore, self).__init__()
@@ -248,6 +250,7 @@ class TemporalBefore(nn.Module):
         time_feature = self.neg_feature(time_feature)
         time_logic = 1 - time_logic
         return feature, logic, time_feature, time_logic, time_density
+
 
 class TemporalAfter(nn.Module):
     def __init__(self):
@@ -352,7 +355,6 @@ class TemporalUnion(nn.Module):
 class FLEX(nn.Module):
     def __init__(self, nentity, nrelation, ntimestamp, hidden_dim, gamma,
                  test_batch_size=1,
-                 query_name_dict=None,
                  center_reg=None, drop: float = 0.):
         super(FLEX, self).__init__()
         self.nentity = nentity
@@ -383,7 +385,6 @@ class FLEX(nn.Module):
         self.time_union = TemporalUnion(hidden_dim)
         self.time_negation = TemporalNegation()
 
-        self.query_name_dict = query_name_dict
         self.batch_entity_range = torch.arange(nentity).float().repeat(test_batch_size, 1)
         self.epsilon = 2.0
         self.gamma = nn.Parameter(torch.Tensor([gamma]), requires_grad=False)
@@ -514,8 +515,14 @@ class FLEX(nn.Module):
     def init(self):
         embedding_range = self.embedding_range.item()
         nn.init.uniform_(tensor=self.entity_feature_embedding.weight.data, a=-embedding_range, b=embedding_range)
+
+        nn.init.uniform_(tensor=self.timestamp_time_feature_embedding.weight.data, a=-embedding_range, b=embedding_range)
+
         nn.init.uniform_(tensor=self.relation_feature_embedding.weight.data, a=-embedding_range, b=embedding_range)
         nn.init.uniform_(tensor=self.relation_logic_embedding.weight.data, a=-embedding_range, b=embedding_range)
+        nn.init.uniform_(tensor=self.relation_time_feature_embedding.weight.data, a=-embedding_range, b=embedding_range)
+        nn.init.uniform_(tensor=self.relation_time_logic_embedding.weight.data, a=-embedding_range, b=embedding_range)
+        nn.init.uniform_(tensor=self.relation_time_density_embedding.weight.data, a=-embedding_range, b=embedding_range)
 
     def scale(self, embedding):
         return embedding / self.embedding_range
@@ -544,6 +551,22 @@ class FLEX(nn.Module):
         time_density = torch.zeros_like(feature).to(feature.device)
         return feature, logic, time_feature, time_logic, time_density
 
+    def embed_args(self, query_args, query_tensor):
+        embedding_of_args = []
+        for i in range(len(query_args)):
+            arg_name = query_args[i]
+            tensor = query_tensor[:, i]
+            if is_entity(arg_name):
+                token_embedding = self.entity_token(tensor)
+            elif is_relation(arg_name):
+                token_embedding = self.relation_token(tensor)
+            elif is_timestamp(arg_name):
+                token_embedding = self.timestamp_token(tensor)
+            else:
+                raise Exception("Unknown Args %s" % arg_name)
+            embedding_of_args.append(token_embedding)
+        return embedding_of_args
+
     def forward(self, positive_sample, negative_sample, subsampling_weight, batch_queries_dict, batch_idxs_dict):
         return self.forward_FLEX(positive_sample, negative_sample, subsampling_weight, batch_queries_dict, batch_idxs_dict)
 
@@ -551,30 +574,29 @@ class FLEX(nn.Module):
                      batch_queries_dict: Dict[QueryStructure, torch.Tensor],
                      batch_idxs_dict: Dict[QueryStructure, List[List[int]]]):
         # 1. 用 batch_queries_dict 将 查询 嵌入
-        all_idxs = []
-        for query_structure in batch_queries_dict:
-            query_name, query_args = query_structure
-            query_tensor = batch_queries_dict[query_structure]
-            query_idxs = batch_idxs_dict[query_structure]
-            func = self.parser.fast_function(query_name)
-            tensor_args = []
-            for i in range(len(query_args)):
-                arg_name = query_args[i]
-                tensor = query_tensor[:, i]
-                if is_entity(arg_name):
-                    token_embedding = self.entity_token(tensor)
-                elif is_relation(arg_name):
-                    token_embedding = self.relation_token(tensor)
-                elif is_timestamp(arg_name):
-                    token_embedding = self.timestamp_token(tensor)
-                else:
-                    raise Exception("Unknown Args %s" % arg_name)
-                tensor_args.append(token_embedding)
-            predict = func(*tensor_args)
-            all_idxs.extend(query_idxs)
-
         all_idxs, all_feature, all_logic = [], [], []
         all_union_idxs, all_union_feature, all_union_logic = [], [], []
+        
+        for query_structure in batch_queries_dict:
+            query_name, query_args = query_structure
+            query_tensor = batch_queries_dict[query_structure]  # BxL, B for batch size, L for query args length
+            query_idxs = batch_idxs_dict[query_structure]
+            # query_idxs is of shape Bx1.
+            # each element indicates global index of each row in query_tensor.
+            # global index means the index in sample from dataloader.
+            # the sample is grouped by query name and leads to query_tensor here.
+            if query_name in union_query_structures:
+                # transform to DNF
+                func = self.parser.fast_function(query_name + "_DNF")
+                embedding_of_args = self.embed_args(query_args, query_tensor)
+                predict = func(*embedding_of_args) # tuple[B x dt, B x dt]
+                all_union_idxs.extend(query_idxs)
+            else:
+                # DM remains
+                func = self.parser.fast_function(query_name)
+                embedding_of_args = self.embed_args(query_args, query_tensor) # [B x dt]*L
+                predict = func(*embedding_of_args) # B x dt
+                all_idxs.extend(query_idxs)
 
         if len(all_feature) > 0:
             all_feature = torch.cat(all_feature, dim=0)  # (B, d)
@@ -661,20 +683,7 @@ class FLEX(nn.Module):
         all_union_idxs, all_union_feature, all_union_logic = [], [], []
         for query_structure in batch_queries_dict:
             # 用字典重新组织了嵌入，一个批次(BxL)只对应一种结构
-            if 'u' in self.query_name_dict[query_structure] and 'DNF' in self.query_name_dict[query_structure]:
-                feature, logic, _ = self.embed_query(self.transform_union_query(batch_queries_dict[query_structure], query_structure),
-                                                     self.transform_union_structure(query_structure),
-                                                     0)
-                all_union_idxs.extend(batch_idxs_dict[query_structure])
-                all_union_feature.append(feature)
-                all_union_logic.append(logic)
-            else:
-                feature, logic, _ = self.embed_query(batch_queries_dict[query_structure],
-                                                     query_structure,
-                                                     0)
-                all_idxs.extend(batch_idxs_dict[query_structure])
-                all_feature.append(feature)
-                all_logic.append(logic)
+            pass
 
         if len(all_feature) > 0:
             all_feature = torch.cat(all_feature, dim=0)  # (B, d)
@@ -757,7 +766,7 @@ class FLEX(nn.Module):
         x = self.scoring(entity_feature, query_feature, query_logic)  # (B, E)
         return x
 
-    def embed_query(self, queries: torch.Tensor, query_structure, idx: int):
+    def embed_query(self, queries: torch.Tensor, query_structure):
         """
         迭代嵌入
         例子：(('e', ('r',)), ('e', ('r',)), ('e', ('r', 'n'))): '3in'
@@ -765,95 +774,7 @@ class FLEX(nn.Module):
         Iterative embed a batch of queries with same structure
         queries:(B, L): a flattened batch of queries (all queries are of query_structure), B is batch size, L is length of queries
         """
-        all_relation_flag = True
-        for ele in query_structure[-1]:
-            # whether the current query tree has merged to one branch and only need to do relation traversal,
-            # e.g., path queries or conjunctive queries after the intersection
-            if ele not in ['r', 'n']:
-                all_relation_flag = False
-                break
-        if all_relation_flag:
-            # 这一类如下
-            #     ('e', ('r',)): '1p',
-            #     ('e', ('r', 'r')): '2p',
-            #     ('e', ('r', 'r', 'r')): '3p',
-            #     ((('e', ('r',)), ('e', ('r',))), ('r',)): 'ip',
-            #     ((('e', ('r',)), ('e', ('r', 'n'))), ('r',)): 'inp',
-            # 都是左边是[实体, 中间推理状态]，右边是[关系, 否运算]，只用把状态沿着运算的方向前进一步
-            # 所以对 query_structure 的索引只有 0 (左) 和 -1 (右)
-            if query_structure[0] == 'e':
-                # 嵌入实体
-                feature_entity_embedding = self.entity_feature(queries[:, idx])
-                logic_entity_embedding = torch.zeros_like(feature_entity_embedding).to(feature_entity_embedding.device)
-
-                idx += 1
-
-                q_feature = feature_entity_embedding
-                q_logic = logic_entity_embedding
-            else:
-                # 嵌入中间推理状态
-                q_feature, q_logic, idx = self.embed_query(queries, query_structure[0], idx)
-
-            for i in range(len(query_structure[-1])):
-                # negation
-                if query_structure[-1][i] == 'n':
-                    assert (queries[:, idx] == -2).all()
-                    q_feature, q_logic = self.negation(q_feature, q_logic)
-
-                # projection
-                else:
-                    r_feature = self.relation_feature_embedding(queries[:, idx])
-                    r_feature = self.scale(r_feature)
-                    r_feature = convert_to_feature(r_feature)
-
-                    r_logic = self.relation_logic_embedding(queries[:, idx])
-                    r_logic = self.scale(r_logic)
-                    r_logic = convert_to_logic(r_logic)
-
-                    q_feature, q_logic = self.projection(q_feature, q_logic, r_feature, r_logic)
-                idx += 1
-        else:
-            # 这一类比较复杂，表示最后一个运算是且运算
-            #     (('e', ('r',)), ('e', ('r',))): '2i',
-            #     (('e', ('r',)), ('e', ('r',)), ('e', ('r',))): '3i',
-            #     (('e', ('r', 'r')), ('e', ('r',))): 'pi',
-            #     (('e', ('r',)), ('e', ('r', 'n'))): '2in',
-            #     (('e', ('r',)), ('e', ('r',)), ('e', ('r', 'n'))): '3in',
-            #     (('e', ('r', 'r')), ('e', ('r', 'n'))): 'pin',
-            #     (('e', ('r', 'r', 'n')), ('e', ('r',))): 'pni',
-            # intersection
-            feature_list = []
-            logic_list = []
-            for i in range(len(query_structure)):  # 把内部每个子结构都嵌入了，再执行 且运算
-                q_feature, q_logic, idx = self.embed_query(queries, query_structure[i], idx)
-                feature_list.append(q_feature)
-                logic_list.append(q_logic)
-
-            stacked_feature = torch.stack(feature_list)
-            stacked_logic = torch.stack(logic_list)
-
-            q_feature, q_logic = self.intersection(stacked_feature, stacked_logic)
-
-        return q_feature, q_logic, idx
-
-    def transform_union_query(self, queries, query_structure: QueryStructure):
-        """
-        transform 2u queries to two 1p queries
-        transform up queries to two 2p queries
-        """
-        if self.query_name_dict[query_structure] == '2u-DNF':
-            queries = queries[:, :-1]  # remove union -1
-        elif self.query_name_dict[query_structure] == 'up-DNF':
-            queries = torch.cat([torch.cat([queries[:, :2], queries[:, 5:6]], dim=1),
-                                 torch.cat([queries[:, 2:4], queries[:, 5:6]], dim=1)], dim=1)
-        queries = torch.reshape(queries, [queries.shape[0] * 2, -1])
-        return queries
-
-    def transform_union_structure(self, query_structure: QueryStructure) -> QueryStructure:
-        if self.query_name_dict[query_structure] == '2u-DNF':
-            return 'e', ('r',)
-        elif self.query_name_dict[query_structure] == 'up-DNF':
-            return 'e', ('r', 'r')
+        pass
 
 
 class MyExperiment(Experiment):
@@ -872,9 +793,11 @@ class MyExperiment(Experiment):
         self.model_param_store.save_scripts([__file__])
         entity_count = data.entity_count
         relation_count = data.relation_count
+        timestamp_count = data.timestamp_count
         self.log('-------------------------------' * 3)
         self.log('# entity: %d' % entity_count)
         self.log('# relation: %d' % relation_count)
+        self.log('# timestamp: %d' % timestamp_count)
         self.log('# max steps: %d' % max_steps)
 
         # 1. build train dataset
@@ -936,6 +859,7 @@ class MyExperiment(Experiment):
         model = FLEX(
             nentity=entity_count,
             nrelation=relation_count,
+            ntimestamp=timestamp_count,
             hidden_dim=hidden_dim,
             gamma=gamma,
             center_reg=center_reg,
