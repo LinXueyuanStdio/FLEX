@@ -134,3 +134,4 @@ tmp/
 output/
 wandb/
 cache/
+data/
