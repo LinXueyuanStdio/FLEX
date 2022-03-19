@@ -390,7 +390,7 @@ class SamplingParser(BasicParser):
             # print("find_timestamp", timestamps)
             return timestamps
 
-        neural_ops = {
+        neural_ops = { # 4+4+3
             "And": lambda q1, q2: FixedQuery(answers=q1.answers & q2.answers, timestamps=q1.timestamps & q2.timestamps),
             "And3": lambda q1, q2, q3: FixedQuery(answers=q1.answers & q2.answers & q3.answers, timestamps=q1.timestamps & q2.timestamps & q3.timestamps),
             "Or": lambda q1, q2: FixedQuery(answers=q1.answers | q2.answers, timestamps=q1.timestamps & q2.timestamps),
