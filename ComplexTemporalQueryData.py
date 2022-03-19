@@ -743,7 +743,7 @@ class ComplexQueryData(TemporalKnowledgeData):
             valid_answers = set()
             test_answers = set()
             placeholders = None
-            # conflict_count = -1
+            conflict_count = -1
             while len(answers) <= 0 or (len(answers) > 0 and (len(valid_answers) <= 0 or len(test_answers) <= 0)):
                 # len(answers) > 0 and (len(valid_answers) <= 0 or len(test_answers) <= 0)
                 # for queries containing negation, test may has no answers while train has lots of answers.
@@ -754,21 +754,21 @@ class ComplexQueryData(TemporalKnowledgeData):
                     answers = sampling_query_answers.answers
                     fixed = placeholder2fixed(placeholders)
                     valid_answers = valid_query_structure_func(*fixed).answers
-                    if for_test and len(valid_answers) <= len(answers):
+                    if for_test and len(valid_answers) <= len(answers) and conflict_count < 10000:
                         answers = set()
                     test_answers = test_query_structure_func(*fixed).answers
                 elif sampling_query_answers.timestamps is not None and len(sampling_query_answers.timestamps) > 0:
                     answers = sampling_query_answers.timestamps
                     fixed = placeholder2fixed(placeholders)
                     valid_answers = valid_query_structure_func(*fixed).timestamps
-                    if for_test and len(valid_answers) <= len(answers):
+                    if for_test and len(valid_answers) <= len(answers) and conflict_count < 10000:
                         answers = set()
                     test_answers = test_query_structure_func(*fixed).timestamps
                 else:
                     answers = set()
                     valid_answers = set()
                     test_answers = set()
-            #     conflict_count += 1
+                conflict_count += 1
             # if conflict_count > 0:
             #     print("conflict_count=", conflict_count)
             queries = placeholder2sample(placeholders)
@@ -796,6 +796,10 @@ class ComplexQueryData(TemporalKnowledgeData):
                     # queries, answers, valid_answers, test_answers = achieve_answers(train_query_structure_func, valid_query_structure_func, test_query_structure_func)
                     for queries, answers, valid_answers, test_answers in zip(batch_queries, batch_answers, batch_valid_answers, batch_test_answers):
                         train_queries_answers.append((queries, answers))
+                        if len(valid_answers) > len(answers):
+                            valid_queries_answers.append((queries, answers, valid_answers))
+                        if len(test_answers) > len(answers):
+                            test_queries_answers.append((queries, answers, test_answers))
                         i += 1
                         bar.update(i, {"train": len(answers), "valid": len(valid_answers), "test": len(test_answers)})
                 self.train_queries_answers[query_structure_name] = {
