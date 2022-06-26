@@ -1,6 +1,4 @@
 """
-@author: lxy
-@email: linxy59@mail2.sysu.edu.cn
 @date: 2021/12/7
 @description: 2个 axis [-inf,inf], 一个 arg [0,1]
 """

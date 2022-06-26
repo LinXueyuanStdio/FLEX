@@ -1,6 +1,4 @@
 """
-@author: lxy
-@email: linxy59@mail2.sysu.edu.cn
 @date: 2021/10/26
 @description: 整理模型，重构代码，加了注释
 """
