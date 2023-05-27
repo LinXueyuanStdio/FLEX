@@ -31,16 +31,3 @@ Each folder in the data represents a KG, including the following files.
 - `valid-easy-answers/test-easy-answers.pkl`: `defaultdict(set)`, each key represents a query, and the value represents the answers obtained in the training graph (edges in `train.txt`) / valid graph (edges in `train.txt`+`valid.txt`)
 - `valid-hard-answers/test-hard-answers.pkl`: `defaultdict(set)`, each key represents a query, and the value represents the **additional** answers obtained in the validation graph (edges in `train.txt`+`valid.txt`) / test graph (edges in `train.txt`+`valid.txt`+`test.txt`)
 
-## Citation
-```latex
-@misc{https://doi.org/10.48550/arxiv.2205.11039,
-  doi = {10.48550/ARXIV.2205.11039},
-  url = {https://arxiv.org/abs/2205.11039},
-  author = {Lin, Xueyuan and E, Haihong and Zhou, Gengxian and Hu, Tianyi and Ningyuan, Li and Sun, Mingzhi and Luo, Haoran},
-  keywords = {Artificial Intelligence (cs.AI), Machine Learning (cs.LG), FOS: Computer and information sciences, FOS: Computer and information sciences},
-  title = {FLEX: Feature-Logic Embedding Framework for CompleX Knowledge Graph Reasoning},
-  publisher = {arXiv},
-  year = {2022},
-  copyright = {Creative Commons Attribution Non Commercial Share Alike 4.0 International}
-}
-```
